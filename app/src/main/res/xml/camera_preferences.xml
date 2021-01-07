@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="utf-8"?>
+<PreferenceScreen xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <PreferenceCategory android:title="Camera Settings">
+
+        <ListPreference
+            android:defaultValue="camera_1"
+            android:entries="@array/camera_id_entries"
+            android:entryValues="@array/camera_id_values"
+            android:key="camera_id"
+            android:title="Camera"
+            app:useSimpleSummaryProvider="true" />
+        <ListPreference
+            android:defaultValue="1"
+            android:entries="@array/camera_wb_entries"
+            android:entryValues="@array/camera_wb_values"
+            android:key="wb_mode"
+            android:title="White Balance"
+            app:useSimpleSummaryProvider="true" />
+        <ListPreference
+            android:defaultValue="2"
+            android:entries="@array/camera_tnr_entries"
+            android:entryValues="@array/camera_tnr_values"
+            android:key="tnr_mode"
+            android:title="Noise Reduction"
+            app:useSimpleSummaryProvider="true" />
+        <SeekBarPreference
+            android:defaultValue="100"
+            android:key="tnr_strength"
+            android:max="100"
+            android:title="Noise Reduction Strength"
+            app:min="-100"
+            app:showSeekBarValue="true" />
+        <ListPreference
+            android:defaultValue="1"
+            android:entries="@array/camera_ee_entries"
+            android:entryValues="@array/camera_ee_values"
+            android:key="ee_mode"
+            android:title="Edge Enhancement"
+            app:useSimpleSummaryProvider="true" />
+        <SeekBarPreference
+            android:defaultValue="0"
+            android:key="ee_strength"
+            android:max="100"
+            android:title="Edge Enhancement Strength"
+            app:min="-100"
+            app:showSeekBarValue="true" />
+        <SeekBarPreference
+            android:defaultValue="0"
+            android:key="exposure_compensation"
+            android:max="200"
+            android:title="Exposure Compensation"
+            app:min="-200"
+            app:showSeekBarValue="true" />
+        <SeekBarPreference
+            android:defaultValue="255"
+            android:key="exposure_threshold"
+            android:max="255"
+            android:title="Exposure Threshold"
+            app:min="0"
+            app:showSeekBarValue="true" />
+    </PreferenceCategory>
+</PreferenceScreen>

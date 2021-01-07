@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?>
+<PreferenceScreen xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <PreferenceCategory android:title="System Settings">
+        <ListPreference
+            android:defaultValue="base_a"
+            android:entries="@array/base_type_entries"
+            android:entryValues="@array/base_type_values"
+            android:key="base_type"
+            android:title="Base Type"
+            app:useSimpleSummaryProvider="true" />
+        <SeekBarPreference
+            android:defaultValue="32"
+            android:key="mog2_threshold"
+            android:max="64"
+            android:title="MOG2 Threshold"
+            app:showSeekBarValue="true" />
+        <SwitchPreference
+            android:defaultValue="false"
+            android:key="new_target_restriction"
+            android:title="New Target Restriction" />
+    </PreferenceCategory>
+    <PreferenceCategory android:title="Video">
+        <ListPreference
+            android:defaultValue="screen"
+            android:entries="@array/video_output_entries"
+            android:entryValues="@array/video_output_values"
+            android:key="video_output"
+            android:title="Output"
+            app:useSimpleSummaryProvider="true" />
+        <SwitchPreference
+            android:defaultValue="false"
+            android:key="save_file"
+            android:title="Save File" />
+        <SwitchPreference
+            android:defaultValue="false"
+            android:key="show_result"
+            android:title="Show Result" />
+    </PreferenceCategory>
+</PreferenceScreen>
