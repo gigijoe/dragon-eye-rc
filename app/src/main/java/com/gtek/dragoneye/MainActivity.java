@@ -14,6 +14,7 @@ import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.media.AudioManager;
 import android.net.DhcpInfo;
@@ -38,6 +39,7 @@ import android.widget.Toast;
 import androidx.appcompat.widget.Toolbar;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
+import androidx.preference.PreferenceManager;
 
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 
@@ -46,6 +48,8 @@ import java.math.BigInteger;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.nio.ByteOrder;
+
+import static android.content.Context.WIFI_SERVICE;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -63,6 +67,9 @@ public class MainActivity extends AppCompatActivity {
     public boolean isRingTonePlaying = false;
 
     public boolean mBaseTypeA = true;
+    public boolean mBaseStarted = false;
+    public boolean mSystemSettingsFetched = false;
+    public boolean mCameraSettingsFetched = false;
 
     private final Handler mHandler = new Handler(Looper.getMainLooper()) {
         @Override
@@ -77,16 +84,14 @@ public class MainActivity extends AppCompatActivity {
                     TextView status = (TextView) findViewById(R.id.textview_status);
                     if(TextUtils.equals(s, "#Started")) {
                         status.setText("Started ...");
+                        mBaseStarted = true;
                         Toast.makeText(mContext,"F3F Base Started", Toast.LENGTH_SHORT).show();
                     } else if(TextUtils.equals(s, "#Stopped")) {
                         status.setText("Stopped !!!");
+                        mBaseStarted = false;
                         Toast.makeText(mContext, "F3F Base Stopped", Toast.LENGTH_SHORT).show();
-                    } else if(TextUtils.equals(s, "#BaseTypeA")) {
-                        mBaseTypeA = true;
-                    } else if(TextUtils.equals(s, "#BaseTypeB")) {
-                        mBaseTypeA = false;
                     } else if(s != null) {
-                        if(s.contains("#Trigger:")) {
+                        if(s.startsWith("#Trigger:")) {
                             System.out.println(s);
                             int i = Integer.parseInt(s.substring(9));
                             if(i != serNo) {
@@ -95,10 +100,116 @@ public class MainActivity extends AppCompatActivity {
                                     isRingTonePlaying = true;
                                     tonePlayer.startPlay();
                                     mTonePlayerHandler.post(ringTonePlayerThread);
+
+                                    Toast.makeText(mContext, "F3F Base Trigger", Toast.LENGTH_SHORT).show();
                                 }
-                                Toast.makeText(mContext, "F3F Base Trigger", Toast.LENGTH_SHORT).show();
                                 serNo = i;
                             }
+                        } else if(s.startsWith("#SystemSettings")) {
+                            //SharedPreferences sp = getSharedPreferences("SystemSettings", MODE_PRIVATE);
+                            //SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(MainActivity.this);
+                            SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(getApplicationContext());
+                            SharedPreferences.Editor editor = sp.edit();
+                            editor.putString("video_output", "off");
+
+                            String lines[] = s.split("\\r?\\n");
+                            for(int i=0;i<lines.length;i++) {
+                                if(lines[i].length() > 0) {
+                                    if(lines[i].startsWith("#"))
+                                        continue;
+                                }
+                                //System.out.println(i + " " + lines[i]);
+                                String keyValue[] = lines[i].split("=");
+                                if (keyValue.length == 2) {
+
+                                    System.out.println("[ " + keyValue[0] + " ] = " + keyValue[1]);
+
+                                    if (TextUtils.equals(keyValue[0], "base.type")) {
+                                        if (TextUtils.equals(keyValue[1], "A")) {
+                                            editor.putString("base_type", "base_a");
+                                            mBaseTypeA = true;
+                                        } else if (TextUtils.equals(keyValue[1], "B")) {
+                                            editor.putString("base_type", "base_b");
+                                            mBaseTypeA = false;
+                                        }
+                                    } else if (TextUtils.equals(keyValue[0], "base.mog2.threshold")) {
+                                        editor.putInt("mog2_threshold", Integer.parseInt(keyValue[1]));
+                                    } else if (TextUtils.equals(keyValue[0], "base.new.target.restriction")) {
+                                        if (TextUtils.equals(keyValue[1], "yes"))
+                                            editor.putBoolean("new_target_restriction", true);
+                                        else
+                                            editor.putBoolean("new_target_restriction", false);
+                                    } else if (TextUtils.equals(keyValue[0], "video.output.screen")) {
+                                        if (TextUtils.equals(keyValue[1], "yes"))
+                                            editor.putString("video_output", "screen");
+                                    } else if (TextUtils.equals(keyValue[0], "video.output.file")) {
+                                        if (TextUtils.equals(keyValue[1], "yes"))
+                                            editor.putBoolean("save_file", true);
+                                        else
+                                            editor.putBoolean("save_file", false);
+                                    } else if (TextUtils.equals(keyValue[0], "video.output.rtp")) {
+                                        if (TextUtils.equals(keyValue[1], "yes"))
+                                            editor.putString("video_output", "rtp");
+                                    } else if (TextUtils.equals(keyValue[0], "video.output.hls")) {
+                                        if (TextUtils.equals(keyValue[1], "yes"))
+                                            editor.putString("video_output", "hls");
+                                    } else if (TextUtils.equals(keyValue[0], "video.output.rtsp")) {
+                                        if (TextUtils.equals(keyValue[1], "yes"))
+                                            editor.putString("video_output", "rtsp");
+                                    } else if (TextUtils.equals(keyValue[0], "video.output.result")) {
+                                        if (TextUtils.equals(keyValue[1], "yes"))
+                                            editor.putBoolean("show_result", true);
+                                        else
+                                            editor.putBoolean("show_result", false);
+                                    }
+                                }
+                            }
+                            editor.commit();
+
+                            mSystemSettingsFetched = true;
+
+                        } else if(s.startsWith("#CameraSettings")) {
+                            //SharedPreferences sp = getSharedPreferences("CameraSettings", MODE_PRIVATE);
+                            SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(getApplicationContext());
+                            SharedPreferences.Editor editor = sp.edit();
+
+                            String lines[] = s.split("\\r?\\n");
+                            for(int i=0;i<lines.length;i++) {
+                                if(lines[i].length() > 0) {
+                                    if(lines[i].startsWith("#"))
+                                        continue;
+                                }
+                                //System.out.println(i + " " + lines[i]);
+                                String keyValue[] = lines[i].split("=");
+                                if (keyValue.length == 2) {
+
+                                    System.out.println("[ " + keyValue[0] + " ] = " + keyValue[1]);
+
+                                    if(TextUtils.equals(keyValue[0], "sensor-id")) {
+                                        if(Integer.parseInt(keyValue[1]) == 0)
+                                            editor.putString("camera_id", "camera_1");
+                                        if(Integer.parseInt(keyValue[1]) == 1)
+                                            editor.putString("camera_id", "camera_2");
+                                    } else if(TextUtils.equals(keyValue[0], "wbmode")) {
+                                        editor.putString("wbmode", keyValue[1]);
+                                    } else if(TextUtils.equals(keyValue[0], "tnr-mode")) {
+                                        editor.putString("tnr_mode", keyValue[1]);
+                                    } else if(TextUtils.equals(keyValue[0], "tnr-strength")) {
+                                        editor.putInt("tnr_strength", Integer.parseInt(keyValue[1]));
+                                    } else if(TextUtils.equals(keyValue[0], "ee-mode")) {
+                                        editor.putString("ee_mode", keyValue[1]);
+                                    } else if(TextUtils.equals(keyValue[0], "ee-strength")) {
+                                        editor.putInt("ee_strength", Integer.parseInt(keyValue[1]) * 100);
+                                    } else if(TextUtils.equals(keyValue[0], "exposurecompensation")) {
+                                        editor.putInt("exposure_compensation", Integer.parseInt(keyValue[1]) * 200);
+                                    } else if(TextUtils.equals(keyValue[0], "exposurethreshold")) {
+                                        editor.putInt("exposure_threshold", Integer.parseInt(keyValue[1]));
+                                    }
+                                }
+                            }
+                            editor.commit();
+
+                            mCameraSettingsFetched = true;
                         }
                     }
                     break;
@@ -159,7 +270,7 @@ public class MainActivity extends AppCompatActivity {
                         @SuppressLint("WifiManagerLeak") final WifiManager manager = (WifiManager) getSystemService(WIFI_SERVICE);
                         final DhcpInfo dhcp = manager.getDhcpInfo();
                         String payloadString = "#Start";
-                        DragonEyeApplication.getInstance().mUdpClient.send(stringAddress(dhcp.gateway), UDP_REMOTE_PORT, payloadString);
+                        DragonEyeApplication.getInstance().mUdpClient.send(DragonEyeApplication.getInstance().mBaseAddress, UDP_REMOTE_PORT, payloadString);
                     }
                 });
                 thread.start();
@@ -176,7 +287,7 @@ public class MainActivity extends AppCompatActivity {
                         @SuppressLint("WifiManagerLeak") final WifiManager manager = (WifiManager) getSystemService(WIFI_SERVICE);
                         final DhcpInfo dhcp = manager.getDhcpInfo();
                         String payloadString = "#Stop";
-                        DragonEyeApplication.getInstance().mUdpClient.send(stringAddress(dhcp.gateway), UDP_REMOTE_PORT, payloadString);
+                        DragonEyeApplication.getInstance().mUdpClient.send(DragonEyeApplication.getInstance().mBaseAddress, UDP_REMOTE_PORT, payloadString);
                     }
                 });
                 thread.start();
@@ -189,6 +300,8 @@ public class MainActivity extends AppCompatActivity {
         @SuppressLint("WifiManagerLeak") final WifiManager manager = (WifiManager) getSystemService(WIFI_SERVICE);
         final DhcpInfo dhcp = manager.getDhcpInfo();
 
+        DragonEyeApplication.getInstance().mBaseAddress = stringAddress(dhcp.gateway);
+
         System.out.println("IP : " + stringAddress(dhcp.ipAddress));
         System.out.println("Netmask : " + stringAddress(dhcp.netmask));
         System.out.println("Gateway : " + stringAddress(dhcp.gateway));
@@ -196,14 +309,13 @@ public class MainActivity extends AppCompatActivity {
         System.out.println("DNS 2 : " + stringAddress(dhcp.dns2));
 
         TextView wifi_ssid = (TextView) findViewById(R.id.textview_ssid);
-        wifi_ssid.setText(stringAddress(dhcp.gateway));
 
         ConnectionUtil mConnectionMonitor = new ConnectionUtil(this);
         mConnectionMonitor.onInternetStateListener(new ConnectionUtil.ConnectionStateListener() {
             @Override
             public void onWifiConnection(boolean connected) {
                 if(connected) {
-                    WifiManager wifiManager = (WifiManager) getApplicationContext().getSystemService(Context.WIFI_SERVICE);
+                    WifiManager wifiManager = (WifiManager) getApplicationContext().getSystemService(WIFI_SERVICE);
                     WifiInfo wifiInfo = wifiManager.getConnectionInfo();
                     if (wifiInfo.getSupplicantState() == SupplicantState.COMPLETED) {
                         System.out.println("Wifi SSID : " + wifiInfo.getSSID());
@@ -214,19 +326,61 @@ public class MainActivity extends AppCompatActivity {
                             public void run() {
                                 @SuppressLint("WifiManagerLeak") final WifiManager manager = (WifiManager) getSystemService(WIFI_SERVICE);
                                 final DhcpInfo dhcp = manager.getDhcpInfo();
-                                String payloadString = "#Status";
-                                DragonEyeApplication.getInstance().mUdpClient.send(stringAddress(dhcp.gateway), UDP_REMOTE_PORT, payloadString);
-                                payloadString = "#BaseType";
-                                DragonEyeApplication.getInstance().mUdpClient.send(stringAddress(dhcp.gateway), UDP_REMOTE_PORT, payloadString);
+                                DragonEyeApplication.getInstance().mBaseAddress = stringAddress(dhcp.gateway);
+                                String payloadString = "#SystemSettings";
+                                DragonEyeApplication.getInstance().mUdpClient.send(DragonEyeApplication.getInstance().mBaseAddress, UDP_REMOTE_PORT, payloadString);
+                                payloadString = "#CameraSettings";
+                                DragonEyeApplication.getInstance().mUdpClient.send(DragonEyeApplication.getInstance().mBaseAddress, UDP_REMOTE_PORT, payloadString);
+                                payloadString = "#Status";
+                                DragonEyeApplication.getInstance().mUdpClient.send(DragonEyeApplication.getInstance().mBaseAddress, UDP_REMOTE_PORT, payloadString);
                             }
                         });
                         thread.start();
                     }
                 } else {
                     wifi_ssid.setText("Unknown SSID");
+
+                    DragonEyeApplication.getInstance().mBaseAddress = "0.0.0.0";
+                    mSystemSettingsFetched = false;
+                    mCameraSettingsFetched = false;
+                    mBaseStarted = false;
                 }
             }
         });
+    }
+
+    @Override
+    protected void onStart() {
+        super.onStart();
+/*
+        WifiManager wifiManager = (WifiManager) getApplicationContext().getSystemService(WIFI_SERVICE);
+        if (wifiManager.isWifiEnabled()) { // Wi-Fi adapter is ON
+            WifiInfo wifiInfo = wifiManager.getConnectionInfo();
+
+            if (wifiInfo.getNetworkId() != -1) {
+                if (wifiInfo.getSupplicantState() == SupplicantState.COMPLETED) {
+                    System.out.println("Wifi SSID : " + wifiInfo.getSSID());
+                    TextView wifi_ssid = (TextView) findViewById(R.id.textview_ssid);
+                    wifi_ssid.setText(wifiInfo.getSSID());
+                }
+                Thread thread = new Thread(new Runnable() {
+                    @Override
+                    public void run() {
+                        @SuppressLint("WifiManagerLeak") final WifiManager manager = (WifiManager) getSystemService(WIFI_SERVICE);
+                        final DhcpInfo dhcp = manager.getDhcpInfo();
+                        DragonEyeApplication.getInstance().mBaseAddress = stringAddress(dhcp.gateway);
+                        String payloadString = "#SystemSettings";
+                        DragonEyeApplication.getInstance().mUdpClient.send(DragonEyeApplication.getInstance().mBaseAddress, UDP_REMOTE_PORT, payloadString);
+                        payloadString = "#CameraSettings";
+                        DragonEyeApplication.getInstance().mUdpClient.send(DragonEyeApplication.getInstance().mBaseAddress, UDP_REMOTE_PORT, payloadString);
+                        payloadString = "#Status";
+                        DragonEyeApplication.getInstance().mUdpClient.send(DragonEyeApplication.getInstance().mBaseAddress, UDP_REMOTE_PORT, payloadString);
+                    }
+                });
+                thread.start();
+            }
+        }
+ */
     }
 
     @Override
@@ -300,18 +454,30 @@ public class MainActivity extends AppCompatActivity {
     public boolean onOptionsItemSelected(@NonNull MenuItem item) {
         switch(item.getItemId()) {
             case R.id.item_rtsp_video:
+                if(mBaseStarted == false) {
+                    Toast.makeText(mContext,"Base stopped !!!",Toast.LENGTH_SHORT).show();
+                    break;
+                }
                 Intent intent = new Intent(getApplicationContext(), VideoActivity.class);
                 @SuppressLint("WifiManagerLeak") final WifiManager manager = (WifiManager) getSystemService(WIFI_SERVICE);
                 final DhcpInfo dhcp = manager.getDhcpInfo();
-                //intent.putExtra(VideoActivity.RTSP_URL, "RTSP://10.0.0.1:8554/test");
-                intent.putExtra(VideoActivity.RTSP_URL, "RTSP://" + stringAddress(dhcp.gateway) + ":8554/test");
+                //intent.putExtra(VideoActivity.RTSP_URL, "RTSP://172.16.0.1:8554/test");
+                intent.putExtra(VideoActivity.RTSP_URL, "RTSP://" + DragonEyeApplication.getInstance().mBaseAddress + ":8554/test");
                 startActivity(intent);
                 break;
             case R.id.item_system_setup:
+                if(mSystemSettingsFetched == false) {
+                    Toast.makeText(mContext,"Fail to fetch System Settings !!!",Toast.LENGTH_SHORT).show();
+                    break;
+                }
                 intent = new Intent(getApplicationContext(), SystemSettingsActivity.class);
                 startActivity(intent);
                 break;
             case R.id.item_camera_setup:
+                if(mCameraSettingsFetched == false) {
+                    Toast.makeText(mContext,"Fail to fetch Camera Settings !!!",Toast.LENGTH_SHORT).show();
+                    break;
+                }
                 intent = new Intent(getApplicationContext(), CameraSettingsActivity.class);
                 startActivity(intent);
                 break;
@@ -332,8 +498,7 @@ public class MainActivity extends AppCompatActivity {
 
                 // Show an alert dialog here with request explanation
                 AlertDialog.Builder builder = new AlertDialog.Builder(mActivity);
-                builder.setMessage("Use SIP, Access internet" +
-                        " Wifi state permissions are required to do the task.");
+                builder.setMessage("Access internet Wifi state permissions are required to do the task.");
                 builder.setTitle("Please grant those permissions");
                 builder.setPositiveButton("OK", new DialogInterface.OnClickListener() {
                     @Override
@@ -366,7 +531,7 @@ public class MainActivity extends AppCompatActivity {
             }
         } else {
             // Do something, when permissions are already granted
-            Toast.makeText(mContext,"Permissions already granted",Toast.LENGTH_SHORT).show();
+            //Toast.makeText(mContext,"Permissions already granted",Toast.LENGTH_SHORT).show();
         }
     }
 
@@ -383,7 +548,7 @@ public class MainActivity extends AppCompatActivity {
                                 )
                 ){
                     // Permissions are granted
-                    Toast.makeText(mContext,"Permissions granted.",Toast.LENGTH_SHORT).show();
+                    //Toast.makeText(mContext,"Permissions granted.",Toast.LENGTH_SHORT).show();
                 }else {
                     // Permissions are denied
                     Toast.makeText(mContext,"Permissions denied.",Toast.LENGTH_SHORT).show();

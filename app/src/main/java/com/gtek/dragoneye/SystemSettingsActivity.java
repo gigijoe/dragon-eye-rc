@@ -94,7 +94,10 @@ public class SystemSettingsActivity extends AppCompatActivity {
 
                 udpPayload.append("#SystemSettings\n");
 
-                SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(SystemSettingsActivity.this);
+                //SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(SystemSettingsActivity.this);
+                //SharedPreferences sp = getSharedPreferences("SystemSettings", MODE_PRIVATE);
+                SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(getApplicationContext());
+
                 String s = sp.getString("base_type", "");
                 switch(s) {
                     case "base_a": udpPayload.append("base.type=A");
@@ -107,14 +110,14 @@ public class SystemSettingsActivity extends AppCompatActivity {
 
                 udpPayload.append("base.hwswitch=no\n");
 
-                @SuppressLint("WifiManagerLeak") final WifiManager manager = (WifiManager) getSystemService(WIFI_SERVICE);
-                final DhcpInfo dhcp = manager.getDhcpInfo();
+                //@SuppressLint("WifiManagerLeak") final WifiManager manager = (WifiManager) getSystemService(WIFI_SERVICE);
+                //final DhcpInfo dhcp = manager.getDhcpInfo();
 
-                udpPayload.append("base.udp.remote.host=" + stringAddress(dhcp.ipAddress));
+                udpPayload.append("base.udp.remote.host=" + DragonEyeApplication.getInstance().mBaseAddress);
                 udpPayload.append("\n");
                 udpPayload.append("base.udp.remote.port=" + UDP_REMOTE_PORT);
                 udpPayload.append("\n");
-                udpPayload.append("base.rtp.remote.host=" + stringAddress(dhcp.ipAddress));
+                udpPayload.append("base.rtp.remote.host=" + DragonEyeApplication.getInstance().mBaseAddress);
                 udpPayload.append("\n");
                 udpPayload.append("base.rtp.remote.port=" + RTP_REMOTE_PORT);
                 udpPayload.append("\n");
@@ -186,10 +189,10 @@ public class SystemSettingsActivity extends AppCompatActivity {
                     @Override
                     public void run() {
                         if (!TextUtils.isEmpty(udpPayload.toString())){
-                            @SuppressLint("WifiManagerLeak") final WifiManager manager = (WifiManager) getSystemService(WIFI_SERVICE);
-                            final DhcpInfo dhcp = manager.getDhcpInfo();
+                            //@SuppressLint("WifiManagerLeak") final WifiManager manager = (WifiManager) getSystemService(WIFI_SERVICE);
+                            //final DhcpInfo dhcp = manager.getDhcpInfo();
 
-                            DragonEyeApplication.getInstance().mUdpClient.send(stringAddress(dhcp.gateway), UDP_REMOTE_PORT, udpPayload.toString());
+                            DragonEyeApplication.getInstance().mUdpClient.send(DragonEyeApplication.getInstance().mBaseAddress, UDP_REMOTE_PORT, udpPayload.toString());
                             //DragonEyeApplication.getInstance().mUdpClient.send("192.168.168.76", UDP_REMOTE_PORT, udpPayload.toString());
                         }
                     }

@@ -88,7 +88,10 @@ public class CameraSettingsActivity extends AppCompatActivity {
 
                 udpPayload.append("#CameraSettings\n");
 
-                SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(CameraSettingsActivity.this);
+                //SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(CameraSettingsActivity.this);
+                //SharedPreferences sp = getSharedPreferences("CameraSettings", MODE_PRIVATE);
+                SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(getApplicationContext());
+
                 String s = sp.getString("camera_id", "");
                 switch(s) {
                     case "camera_1": udpPayload.append("sensor-id=0");
@@ -99,27 +102,27 @@ public class CameraSettingsActivity extends AppCompatActivity {
 
                 udpPayload.append("\n");
 
-                s = sp.getString("wb_mode", "0");
+                s = sp.getString("wbmode", "0"); /* Default value 0 */
                 udpPayload.append("wbmode=" + Integer.parseInt(s));
 
                 udpPayload.append("\n");
 
-                s = sp.getString("tnr_mode", "2");
+                s = sp.getString("tnr_mode", "2"); /* Default value 2 */
                 udpPayload.append("tnr-mode=" + Integer.parseInt(s));
 
                 udpPayload.append("\n");
 
-                Integer i = sp.getInt("tnr_strength", 100);
+                Integer i = sp.getInt("tnr_strength", 100); /* Default value 100 */
                 udpPayload.append("tnr-strength=" + (float)i / 100);
 
                 udpPayload.append("\n");
 
-                s = sp.getString("ee_mode", "1");
+                s = sp.getString("ee_mode", "1"); /* Default value 1 */
                 udpPayload.append("ee-mode=" + Integer.parseInt(s));
 
                 udpPayload.append("\n");
 
-                i = sp.getInt("ee_strength", 0);
+                i = sp.getInt("ee_strength", 0); /* Default value 0 */
                 udpPayload.append("ee-strength=" + i / 100);
 
                 udpPayload.append("\n");
@@ -128,12 +131,12 @@ public class CameraSettingsActivity extends AppCompatActivity {
                 udpPayload.append("ispdigitalgainrange=\"1 8\"\n");
                 udpPayload.append("exposuretimerange=\"5000000 20000000\"\n");
 
-                i = sp.getInt("exposure_compensation", 0);
+                i = sp.getInt("exposure_compensation", 0); /* Default value 0 */
                 udpPayload.append("exposurecompensation=" + (float)i / 200);
 
                 udpPayload.append("\n");
 
-                i = sp.getInt("exposure_threshold", 255);
+                i = sp.getInt("exposure_threshold", 255); /* Default value 255 */
                 udpPayload.append("exposurethreshold=" + i);
 
                 udpPayload.append("\n");
@@ -148,10 +151,10 @@ public class CameraSettingsActivity extends AppCompatActivity {
                     @Override
                     public void run() {
                         if (!TextUtils.isEmpty(udpPayload.toString())){
-                            @SuppressLint("WifiManagerLeak") final WifiManager manager = (WifiManager) getSystemService(WIFI_SERVICE);
-                            final DhcpInfo dhcp = manager.getDhcpInfo();
+                            //@SuppressLint("WifiManagerLeak") final WifiManager manager = (WifiManager) getSystemService(WIFI_SERVICE);
+                            //final DhcpInfo dhcp = manager.getDhcpInfo();
 
-                            DragonEyeApplication.getInstance().mUdpClient.send(MainActivity.stringAddress(dhcp.gateway), UDP_REMOTE_PORT, udpPayload.toString());
+                            DragonEyeApplication.getInstance().mUdpClient.send(DragonEyeApplication.getInstance().mBaseAddress, UDP_REMOTE_PORT, udpPayload.toString());
                             //DragonEyeApplication.getInstance().mUdpClient.send("192.168.168.76", UDP_REMOTE_PORT, udpPayload.toString());
                         }
                     }

@@ -22,6 +22,7 @@ public class DragonEyeApplication extends Application {
     }
 
     public UDPClient mUdpClient = null;
+    public String mBaseAddress = "0.0.0.0";
 
     @Override
     public void onCreate() {

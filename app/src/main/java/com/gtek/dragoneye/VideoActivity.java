@@ -116,7 +116,7 @@ public class VideoActivity  extends Activity implements IVLCVout.Callback    {
 
         Media m = new Media(libvlc, Uri.parse(rtspUrl));
         m.setHWDecoderEnabled(true, false);
-        m.addOption(":network-caching=10");
+        m.addOption(":network-caching=0");
         m.addOption(":clock-jitter=0");
         m.addOption(":clock-synchro=0");
         m.addOption(":no-audio");
