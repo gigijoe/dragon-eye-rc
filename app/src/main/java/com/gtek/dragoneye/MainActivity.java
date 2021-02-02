@@ -101,7 +101,7 @@ public class MainActivity extends AppCompatActivity {
                                     tonePlayer.startPlay();
                                     mTonePlayerHandler.post(ringTonePlayerThread);
 
-                                    Toast.makeText(mContext, "F3F Base Trigger", Toast.LENGTH_SHORT).show();
+                                    //Toast.makeText(mContext, "F3F Base Trigger", Toast.LENGTH_SHORT).show();
                                 }
                                 serNo = i;
                             }
