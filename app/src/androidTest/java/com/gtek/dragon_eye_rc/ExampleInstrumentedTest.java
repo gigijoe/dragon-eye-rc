@@ -1,4 +1,4 @@
-package com.gtek.dragoneye;
+package com.gtek.dragon_eye_rc;
 
 import android.content.Context;
 

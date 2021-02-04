@@ -1,4 +1,4 @@
-package com.gtek.dragoneye;
+package com.gtek.dragon_eye_rc;
 
 import android.content.BroadcastReceiver;
 import android.content.Context;
@@ -7,9 +7,6 @@ import android.content.IntentFilter;
 import android.net.ConnectivityManager;
 import android.net.Network;
 import android.net.NetworkCapabilities;
-import android.net.wifi.SupplicantState;
-import android.net.wifi.WifiInfo;
-import android.net.wifi.WifiManager;
 import android.os.Build;
 
 import androidx.appcompat.app.AppCompatActivity;

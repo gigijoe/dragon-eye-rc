@@ -7,7 +7,7 @@ android {
     buildToolsVersion "30.0.2"
 
     defaultConfig {
-        applicationId "com.gtek.dragoneye"
+        applicationId "com.gtek.dragon_eye_rc"
         minSdkVersion 23
         targetSdkVersion 30
         versionCode 1
@@ -26,6 +26,10 @@ android {
         sourceCompatibility JavaVersion.VERSION_1_8
         targetCompatibility JavaVersion.VERSION_1_8
     }
+}
+
+repositories {
+    maven { url 'http://repo1.maven.org/maven2' }
 }
 
 dependencies {

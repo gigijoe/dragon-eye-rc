@@ -1,19 +1,15 @@
-package com.gtek.dragoneye;
+package com.gtek.dragon_eye_rc;
 
-import android.annotation.SuppressLint;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.SharedPreferences;
-import android.net.DhcpInfo;
-import android.net.wifi.WifiManager;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.Message;
 import android.text.TextUtils;
-import android.util.Log;
 import android.view.View;
 import android.widget.Toast;
 
@@ -24,12 +20,10 @@ import androidx.preference.PreferenceManager;
 
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-
-public class CameraSettingsActivity extends AppCompatActivity {
+public class SystemSettingsActivity extends AppCompatActivity {
 
     private static final int UDP_REMOTE_PORT = 4999;
+    private static final int RTP_REMOTE_PORT = 5000;
     private Context mContext;
 
     private final Handler mHandler = new Handler(Looper.getMainLooper()) {
@@ -50,6 +44,7 @@ public class CameraSettingsActivity extends AppCompatActivity {
                     //udpSendStrBuf.append(msg.obj.toString());
                     //txt_Send.setText(udpSendStrBuf.toString());
                     System.out.println("UDP TX : " + msg.obj.toString());
+                    //Toast.makeText(mContext,"UDP TX.",Toast.LENGTH_SHORT).show();
                     break;
                 case 3: /* Timeout */
                     //txt_Recv.setText(udpRcvStrBuf.toString());
@@ -62,11 +57,11 @@ public class CameraSettingsActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.camera_settings_activity);
+        setContentView(R.layout.system_settings_activity);
         if (savedInstanceState == null) {
             getSupportFragmentManager()
                     .beginTransaction()
-                    .replace(R.id.camera_settings, new SettingsFragment())
+                    .replace(R.id.system_settings, new SettingsFragment())
                     .commit();
         }
         ActionBar actionBar = getSupportActionBar();
@@ -76,7 +71,7 @@ public class CameraSettingsActivity extends AppCompatActivity {
 
         mContext = getApplicationContext();
 
-        FloatingActionButton fab = findViewById(R.id.camera_settings_apply);
+        FloatingActionButton fab = findViewById(R.id.system_settings_apply);
         fab.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
@@ -86,65 +81,97 @@ public class CameraSettingsActivity extends AppCompatActivity {
 */
                 StringBuffer udpPayload = new StringBuffer();
 
-                udpPayload.append("#CameraSettings\n");
+                udpPayload.append("#SystemSettings\n");
 
-                //SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(CameraSettingsActivity.this);
-                //SharedPreferences sp = getSharedPreferences("CameraSettings", MODE_PRIVATE);
+                //SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(SystemSettingsActivity.this);
+                //SharedPreferences sp = getSharedPreferences("SystemSettings", MODE_PRIVATE);
                 SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(getApplicationContext());
 
-                String s = sp.getString("camera_id", "");
+                String s = sp.getString("base_type", "");
                 switch(s) {
-                    case "camera_1": udpPayload.append("sensor-id=0");
+                    case "base_a": udpPayload.append("base.type=A");
                         break;
-                    case "camera_2": udpPayload.append("sensor-id=1");
+                    case "base_b": udpPayload.append("base.type=B");
                         break;
                 }
 
                 udpPayload.append("\n");
 
-                s = sp.getString("wbmode", "0"); /* Default value 0 */
-                udpPayload.append("wbmode=" + Integer.parseInt(s));
+                udpPayload.append("base.hwswitch=no\n");
+
+                //@SuppressLint("WifiManagerLeak") final WifiManager manager = (WifiManager) getSystemService(WIFI_SERVICE);
+                //final DhcpInfo dhcp = manager.getDhcpInfo();
+
+                udpPayload.append("base.udp.remote.host=" + DragonEyeApplication.getInstance().mBaseAddress);
+                udpPayload.append("\n");
+                udpPayload.append("base.udp.remote.port=" + UDP_REMOTE_PORT);
+                udpPayload.append("\n");
+                udpPayload.append("base.rtp.remote.host=" + DragonEyeApplication.getInstance().mBaseAddress);
+                udpPayload.append("\n");
+                udpPayload.append("base.rtp.remote.port=" + RTP_REMOTE_PORT);
+                udpPayload.append("\n");
+
+                Integer i = sp.getInt("mog2_threshold", 0);
+                udpPayload.append("base.mog2.threshold=" + i);
+                udpPayload.append("\n");
+
+                Boolean b = sp.getBoolean("new_target_restriction", false);
+                if(b)
+                    udpPayload.append("base.new.target.restriction=yes");
+                else
+                    udpPayload.append("base.new.target.restriction=no");
 
                 udpPayload.append("\n");
 
-                s = sp.getString("tnr_mode", "2"); /* Default value 2 */
-                udpPayload.append("tnr-mode=" + Integer.parseInt(s));
+                s = sp.getString("video_output", "");
+                if(s.equals("screen"))
+                    udpPayload.append("video.output.screen=yes");
+                else
+                    udpPayload.append("video.output.screen=no");
 
                 udpPayload.append("\n");
 
-                Integer i = sp.getInt("tnr_strength", 100); /* Default value 100 */
-                udpPayload.append("tnr-strength=" + (float)i / 100);
+                if(s.equals("rtp"))
+                    udpPayload.append("video.output.rtp=yes");
+                else
+                    udpPayload.append("video.output.rtp=no");
 
                 udpPayload.append("\n");
 
-                s = sp.getString("ee_mode", "1"); /* Default value 1 */
-                udpPayload.append("ee-mode=" + Integer.parseInt(s));
+                if(s.equals("hls"))
+                    udpPayload.append("video.output.hls=yes");
+                else
+                    udpPayload.append("video.output.hls=no");
 
                 udpPayload.append("\n");
 
-                i = sp.getInt("ee_strength", 0); /* Default value 0 */
-                udpPayload.append("ee-strength=" + i / 100);
+                if(s.equals("rtsp"))
+                    udpPayload.append("video.output.rtsp=yes");
+                else
+                    udpPayload.append("video.output.rtsp=no");
 
                 udpPayload.append("\n");
 
-                udpPayload.append("gainrange=\"1 16\"\n");
-                udpPayload.append("ispdigitalgainrange=\"1 8\"\n");
-                udpPayload.append("exposuretimerange=\"5000000 20000000\"\n");
-
-                i = sp.getInt("exposure_compensation", 0); /* Default value 0 */
-                udpPayload.append("exposurecompensation=" + (float)i / 200);
+                b = sp.getBoolean("save_file", false);
+                if(b)
+                    udpPayload.append("video.output.file=yes");
+                else
+                    udpPayload.append("video.output.file=no");
 
                 udpPayload.append("\n");
 
-                i = sp.getInt("exposure_threshold", 255); /* Default value 255 */
-                udpPayload.append("exposurethreshold=" + i);
+                b = sp.getBoolean("show_result", false);
+                if(b)
+                    udpPayload.append("video.output.result=yes");
+                else
+                    udpPayload.append("video.output.result=no");
 
                 udpPayload.append("\n");
 
                 //System.out.println(udpPayload.toString());
 
                 /*
-                 *
+                *
                  */
 
                 Thread thread = new Thread(new Runnable() {
@@ -165,6 +192,12 @@ public class CameraSettingsActivity extends AppCompatActivity {
 
         IntentFilter udpRcvIntentFilter = new IntentFilter("udpMsg");
         registerReceiver(broadcastReceiver, udpRcvIntentFilter);
+    }
+
+    @Override
+    protected void onDestroy() {
+        unregisterReceiver(broadcastReceiver);
+        super.onDestroy();
     }
 
     private BroadcastReceiver broadcastReceiver = new BroadcastReceiver() {
@@ -194,7 +227,13 @@ public class CameraSettingsActivity extends AppCompatActivity {
     public static class SettingsFragment extends PreferenceFragmentCompat {
         @Override
         public void onCreatePreferences(Bundle savedInstanceState, String rootKey) {
-            setPreferencesFromResource(R.xml.camera_preferences, rootKey);
+            setPreferencesFromResource(R.xml.system_preferences, rootKey);
+/*
+            ListPreference base_type = (ListPreference) getPreferenceManager().findPreference("base_type");
+            if(base_type != null) {
+                System.out.println("Base Type : " + base_type.getValue());
+            }
+*/
         }
     }
 }

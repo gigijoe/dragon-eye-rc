@@ -1,13 +1,7 @@
-package com.gtek.dragoneye;
+package com.gtek.dragon_eye_rc;
 
 import android.app.Activity;
-import android.content.Context;
 import android.content.Intent;
-import android.graphics.Color;
-import android.net.ConnectivityManager;
-import android.net.Network;
-import android.net.NetworkCapabilities;
-import android.net.NetworkRequest;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
@@ -24,12 +18,7 @@ import org.videolan.libvlc.MediaPlayer;
 import java.lang.ref.WeakReference;
 import java.util.ArrayList;
 
-import android.util.Log;
-
 import androidx.annotation.RequiresApi;
-
-import org.videolan.libvlc.MediaPlayer;
-import java.lang.ref.WeakReference;
 
 public class VideoActivity  extends Activity implements IVLCVout.Callback    {
     public final static String TAG = "VideoActivity";
@@ -91,12 +80,14 @@ public class VideoActivity  extends Activity implements IVLCVout.Callback    {
         ArrayList<String> options = new ArrayList<String>();
         //options.add("--aout=opensles");
         //options.add("--audio-time-stretch"); // time stretching
-        options.add("-vvv"); // verbosity
+        options.add("-v"); // verbosity
         //options.add("--aout=opensles");
         //options.add("--avcodec-codec=hevc");
         //options.add("--file-logging");
         //options.add("--logfile=vlc-log.txt");
         options.add("--log-verbose");
+        options.add("--low-delay");
+        options.add("--fps=10");
         //options.add("--rtsp-tcp");
         options.add("--rtsp-timeout=600"); //  Timeout in 10 minutes.
 
@@ -116,7 +107,10 @@ public class VideoActivity  extends Activity implements IVLCVout.Callback    {
 
         Media m = new Media(libvlc, Uri.parse(rtspUrl));
         m.setHWDecoderEnabled(true, false);
-        m.addOption(":network-caching=0");
+        m.addOption(":network-caching=150");
+        m.addOption(":live-caching=0");
+        m.addOption(":file-caching=0");
+        //m.addOption(":sout-mux-caching=0");
         m.addOption(":clock-jitter=0");
         m.addOption(":clock-synchro=0");
         m.addOption(":no-audio");

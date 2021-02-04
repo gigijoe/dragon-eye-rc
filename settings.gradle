@@ -1,2 +1,2 @@
 include ':app'
-rootProject.name = "DragonEye"
+rootProject.name = "dragon-eye-rc"

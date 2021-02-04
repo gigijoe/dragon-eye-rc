@@ -1,4 +1,4 @@
-package com.gtek.dragoneye;
+package com.gtek.dragon_eye_rc;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.RequiresApi;
@@ -8,7 +8,6 @@ import android.Manifest;
 import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.app.AlertDialog;
-import android.app.Service;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.DialogInterface;
@@ -16,7 +15,6 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
-import android.media.AudioManager;
 import android.net.DhcpInfo;
 import android.net.wifi.SupplicantState;
 import android.net.wifi.WifiInfo;
@@ -27,7 +25,6 @@ import android.os.Handler;
 import android.os.HandlerThread;
 import android.os.Looper;
 import android.os.Message;
-import android.os.PowerManager;
 import android.text.TextUtils;
 import android.util.Log;
 import android.view.Menu;
@@ -48,8 +45,6 @@ import java.math.BigInteger;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.nio.ByteOrder;
-
-import static android.content.Context.WIFI_SERVICE;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -352,6 +347,39 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onStart() {
         super.onStart();
+
+        WifiManager wifiManager = (WifiManager) getApplicationContext().getSystemService(WIFI_SERVICE);
+        if (wifiManager.isWifiEnabled()) { // Wi-Fi adapter is ON
+            WifiInfo wifiInfo = wifiManager.getConnectionInfo();
+
+            if (wifiInfo.getNetworkId() != -1) {
+                if (wifiInfo.getSupplicantState() == SupplicantState.COMPLETED) {
+                    System.out.println("Wifi SSID : " + wifiInfo.getSSID());
+                    TextView wifi_ssid = (TextView) findViewById(R.id.textview_ssid);
+                    wifi_ssid.setText(wifiInfo.getSSID());
+                }
+                Thread thread = new Thread(new Runnable() {
+                    @Override
+                    public void run() {
+                        if(DragonEyeApplication.getInstance().mBaseAddress.equals("0.0.0.0")) {
+                            final DhcpInfo dhcp = wifiManager.getDhcpInfo();
+                            DragonEyeApplication.getInstance().mBaseAddress = stringAddress(dhcp.gateway);
+                        }
+
+                        if(mSystemSettingsFetched == false) {
+                            String payloadString = "#SystemSettings";
+                            DragonEyeApplication.getInstance().mUdpClient.send(DragonEyeApplication.getInstance().mBaseAddress, UDP_REMOTE_PORT, payloadString);
+                        }
+
+                        if(mCameraSettingsFetched == false) {
+                            String payloadString = "#CameraSettings";
+                            DragonEyeApplication.getInstance().mUdpClient.send(DragonEyeApplication.getInstance().mBaseAddress, UDP_REMOTE_PORT, payloadString);
+                        }
+                    }
+                });
+            }
+        }
+
 /*
         WifiManager wifiManager = (WifiManager) getApplicationContext().getSystemService(WIFI_SERVICE);
         if (wifiManager.isWifiEnabled()) { // Wi-Fi adapter is ON

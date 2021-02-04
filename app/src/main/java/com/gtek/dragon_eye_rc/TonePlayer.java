@@ -1,12 +1,10 @@
-package com.gtek.dragoneye;
+package com.gtek.dragon_eye_rc;
 
 import android.media.AudioAttributes;
 import android.media.AudioFormat;
 import android.media.AudioManager;
 import android.media.AudioTrack;
 import android.os.Build;
-
-import static android.provider.UserDictionary.Words.FREQUENCY;
 
 public class TonePlayer {
     // 设置音频采样率，44100是目前的标准，但是某些设备仍然支持22050，1000，11025
@@ -30,7 +28,6 @@ public class TonePlayer {
 
     public void startPlay() {
         if(audioTrack == null) {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
                 audioTrack = new AudioTrack(
                         new AudioAttributes.Builder()
                                 .setUsage(AudioAttributes.USAGE_MEDIA)
@@ -43,13 +40,6 @@ public class TonePlayer {
                         bufferSizeInBytes,
                         AudioTrack.MODE_STREAM,
                         AudioManager.AUDIO_SESSION_ID_GENERATE);
-            } else {
-                audioTrack = new AudioTrack(AudioManager.STREAM_RING, sampleRateInHz,
-                        channelConfig,
-                        audioFormat,
-                        bufferSizeInBytes,
-                        AudioTrack.MODE_STREAM);
-            }
         }
         audioTrack.play();
     }
