@@ -40,11 +40,15 @@ import androidx.preference.PreferenceManager;
 
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 
+import java.io.IOException;
 import java.io.InputStream;
 import java.math.BigInteger;
+import java.net.DatagramPacket;
 import java.net.InetAddress;
+import java.net.MulticastSocket;
 import java.net.UnknownHostException;
 import java.nio.ByteOrder;
+import java.nio.charset.StandardCharsets;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -65,6 +69,8 @@ public class MainActivity extends AppCompatActivity {
     public boolean mBaseStarted = false;
     public boolean mSystemSettingsFetched = false;
     public boolean mCameraSettingsFetched = false;
+
+    private WifiManager.MulticastLock mMulticastLock = null;
 
     private final Handler mHandler = new Handler(Looper.getMainLooper()) {
         @Override
@@ -259,11 +265,11 @@ public class MainActivity extends AppCompatActivity {
         bs.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
+                if(TextUtils.equals(DragonEyeApplication.getInstance().mBaseAddress, "0.0.0.0"))
+                    return;
                 Thread thread = new Thread(new Runnable() {
                     @Override
                     public void run() {
-                        @SuppressLint("WifiManagerLeak") final WifiManager manager = (WifiManager) getSystemService(WIFI_SERVICE);
-                        final DhcpInfo dhcp = manager.getDhcpInfo();
                         String payloadString = "#Start";
                         DragonEyeApplication.getInstance().mUdpClient.send(DragonEyeApplication.getInstance().mBaseAddress, UDP_REMOTE_PORT, payloadString);
                     }
@@ -276,11 +282,11 @@ public class MainActivity extends AppCompatActivity {
         bp.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
+                if(TextUtils.equals(DragonEyeApplication.getInstance().mBaseAddress, "0.0.0.0"))
+                    return;
                 Thread thread = new Thread(new Runnable() {
                     @Override
                     public void run() {
-                        @SuppressLint("WifiManagerLeak") final WifiManager manager = (WifiManager) getSystemService(WIFI_SERVICE);
-                        final DhcpInfo dhcp = manager.getDhcpInfo();
                         String payloadString = "#Stop";
                         DragonEyeApplication.getInstance().mUdpClient.send(DragonEyeApplication.getInstance().mBaseAddress, UDP_REMOTE_PORT, payloadString);
                     }
@@ -293,9 +299,11 @@ public class MainActivity extends AppCompatActivity {
         registerReceiver(broadcastReceiver, udpRcvIntentFilter);
 
         @SuppressLint("WifiManagerLeak") final WifiManager manager = (WifiManager) getSystemService(WIFI_SERVICE);
+        mMulticastLock = manager.createMulticastLock("mylock");
+        mMulticastLock.setReferenceCounted(true);
+        mMulticastLock.acquire();
         final DhcpInfo dhcp = manager.getDhcpInfo();
-
-        DragonEyeApplication.getInstance().mBaseAddress = stringAddress(dhcp.gateway);
+        //DragonEyeApplication.getInstance().mBaseAddress = stringAddress(dhcp.gateway);
 
         System.out.println("IP : " + stringAddress(dhcp.ipAddress));
         System.out.println("Netmask : " + stringAddress(dhcp.netmask));
@@ -309,28 +317,11 @@ public class MainActivity extends AppCompatActivity {
         mConnectionMonitor.onInternetStateListener(new ConnectionUtil.ConnectionStateListener() {
             @Override
             public void onWifiConnection(boolean connected) {
-                if(connected) {
-                    WifiManager wifiManager = (WifiManager) getApplicationContext().getSystemService(WIFI_SERVICE);
-                    WifiInfo wifiInfo = wifiManager.getConnectionInfo();
+                if (connected) {
+                    WifiInfo wifiInfo = manager.getConnectionInfo();
                     if (wifiInfo.getSupplicantState() == SupplicantState.COMPLETED) {
                         System.out.println("Wifi SSID : " + wifiInfo.getSSID());
                         wifi_ssid.setText(wifiInfo.getSSID());
-
-                        Thread thread = new Thread(new Runnable() {
-                            @Override
-                            public void run() {
-                                @SuppressLint("WifiManagerLeak") final WifiManager manager = (WifiManager) getSystemService(WIFI_SERVICE);
-                                final DhcpInfo dhcp = manager.getDhcpInfo();
-                                DragonEyeApplication.getInstance().mBaseAddress = stringAddress(dhcp.gateway);
-                                String payloadString = "#SystemSettings";
-                                DragonEyeApplication.getInstance().mUdpClient.send(DragonEyeApplication.getInstance().mBaseAddress, UDP_REMOTE_PORT, payloadString);
-                                payloadString = "#CameraSettings";
-                                DragonEyeApplication.getInstance().mUdpClient.send(DragonEyeApplication.getInstance().mBaseAddress, UDP_REMOTE_PORT, payloadString);
-                                payloadString = "#Status";
-                                DragonEyeApplication.getInstance().mUdpClient.send(DragonEyeApplication.getInstance().mBaseAddress, UDP_REMOTE_PORT, payloadString);
-                            }
-                        });
-                        thread.start();
                     }
                 } else {
                     wifi_ssid.setText("Unknown SSID");
@@ -342,6 +333,61 @@ public class MainActivity extends AppCompatActivity {
                 }
             }
         });
+
+        Thread thread = new Thread(new Runnable() { /* Multicast receiver */
+            @Override
+            public void run() {
+                MulticastSocket socket = null;
+                InetAddress group = null;
+                try {
+                    socket = new MulticastSocket(9001);
+                    group = InetAddress.getByName("224.0.0.1");
+                    socket.joinGroup(group);
+
+                    DatagramPacket packet;
+                    while (true) {
+                        byte[] buf = new byte[256];
+                        packet = new DatagramPacket(buf, buf.length);
+                        socket.receive(packet);
+
+                        String msg = new String(packet.getData(), packet.getOffset(), packet.getLength());
+                        System.out.println("Multicast receive : " + msg);
+
+                        String baseHost[] = msg.split(":");
+                        if(baseHost.length >= 2) {
+                            //System.out.println(baseHost[0]);
+                            //System.out.println(baseHost[1]);
+                            if (TextUtils.equals(baseHost[0], "BASE_A") ||
+                                    TextUtils.equals(baseHost[0], "BASE_B")) { /* Base found ... */
+                                if (!TextUtils.equals(DragonEyeApplication.getInstance().mBaseAddress, baseHost[1])) {
+                                    DragonEyeApplication.getInstance().mBaseAddress = baseHost[1];
+                                    String payloadString = "#SystemSettings";
+                                    DragonEyeApplication.getInstance().mUdpClient.send(DragonEyeApplication.getInstance().mBaseAddress, UDP_REMOTE_PORT, payloadString);
+                                    payloadString = "#CameraSettings";
+                                    DragonEyeApplication.getInstance().mUdpClient.send(DragonEyeApplication.getInstance().mBaseAddress, UDP_REMOTE_PORT, payloadString);
+                                    payloadString = "#Status";
+                                    DragonEyeApplication.getInstance().mUdpClient.send(DragonEyeApplication.getInstance().mBaseAddress, UDP_REMOTE_PORT, payloadString);
+                                }
+                            }
+                        }
+                    }
+                } catch(IOException e) {
+                    System.out.println(e.toString());
+                } finally {
+                    if(socket != null) {
+                        try {
+                            if (group != null)
+                                socket.leaveGroup(group);
+
+                            socket.close();
+                        } catch(IOException e) {
+
+                        }
+                    }
+                }
+            }
+        });
+        thread.start();
     }
 
     @Override
@@ -358,14 +404,13 @@ public class MainActivity extends AppCompatActivity {
                     TextView wifi_ssid = (TextView) findViewById(R.id.textview_ssid);
                     wifi_ssid.setText(wifiInfo.getSSID());
                 }
+
+                if(TextUtils.equals(DragonEyeApplication.getInstance().mBaseAddress, "0.0.0.0"))
+                    return;
+                
                 Thread thread = new Thread(new Runnable() {
                     @Override
                     public void run() {
-                        if(DragonEyeApplication.getInstance().mBaseAddress.equals("0.0.0.0")) {
-                            final DhcpInfo dhcp = wifiManager.getDhcpInfo();
-                            DragonEyeApplication.getInstance().mBaseAddress = stringAddress(dhcp.gateway);
-                        }
-
                         if(mSystemSettingsFetched == false) {
                             String payloadString = "#SystemSettings";
                             DragonEyeApplication.getInstance().mUdpClient.send(DragonEyeApplication.getInstance().mBaseAddress, UDP_REMOTE_PORT, payloadString);
@@ -377,42 +422,17 @@ public class MainActivity extends AppCompatActivity {
                         }
                     }
                 });
-            }
-        }
-
-/*
-        WifiManager wifiManager = (WifiManager) getApplicationContext().getSystemService(WIFI_SERVICE);
-        if (wifiManager.isWifiEnabled()) { // Wi-Fi adapter is ON
-            WifiInfo wifiInfo = wifiManager.getConnectionInfo();
-
-            if (wifiInfo.getNetworkId() != -1) {
-                if (wifiInfo.getSupplicantState() == SupplicantState.COMPLETED) {
-                    System.out.println("Wifi SSID : " + wifiInfo.getSSID());
-                    TextView wifi_ssid = (TextView) findViewById(R.id.textview_ssid);
-                    wifi_ssid.setText(wifiInfo.getSSID());
-                }
-                Thread thread = new Thread(new Runnable() {
-                    @Override
-                    public void run() {
-                        @SuppressLint("WifiManagerLeak") final WifiManager manager = (WifiManager) getSystemService(WIFI_SERVICE);
-                        final DhcpInfo dhcp = manager.getDhcpInfo();
-                        DragonEyeApplication.getInstance().mBaseAddress = stringAddress(dhcp.gateway);
-                        String payloadString = "#SystemSettings";
-                        DragonEyeApplication.getInstance().mUdpClient.send(DragonEyeApplication.getInstance().mBaseAddress, UDP_REMOTE_PORT, payloadString);
-                        payloadString = "#CameraSettings";
-                        DragonEyeApplication.getInstance().mUdpClient.send(DragonEyeApplication.getInstance().mBaseAddress, UDP_REMOTE_PORT, payloadString);
-                        payloadString = "#Status";
-                        DragonEyeApplication.getInstance().mUdpClient.send(DragonEyeApplication.getInstance().mBaseAddress, UDP_REMOTE_PORT, payloadString);
-                    }
-                });
                 thread.start();
             }
         }
- */
     }
 
     @Override
     protected void onDestroy() {
+        if(mMulticastLock != null) {
+            mMulticastLock.release();
+            mMulticastLock = null;
+        }
         unregisterReceiver(broadcastReceiver);
         super.onDestroy();
     }
@@ -487,8 +507,6 @@ public class MainActivity extends AppCompatActivity {
                     break;
                 }
                 Intent intent = new Intent(getApplicationContext(), VideoActivity.class);
-                @SuppressLint("WifiManagerLeak") final WifiManager manager = (WifiManager) getSystemService(WIFI_SERVICE);
-                final DhcpInfo dhcp = manager.getDhcpInfo();
                 //intent.putExtra(VideoActivity.RTSP_URL, "RTSP://172.16.0.1:8554/test");
                 intent.putExtra(VideoActivity.RTSP_URL, "RTSP://" + DragonEyeApplication.getInstance().mBaseAddress + ":8554/test");
                 startActivity(intent);
