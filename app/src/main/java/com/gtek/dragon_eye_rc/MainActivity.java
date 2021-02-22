@@ -59,13 +59,33 @@ public class MainActivity extends AppCompatActivity {
     private Activity mActivity;
 
     private static int serNo = 0;
+    private static int serNoA = 0, serNoB = 0;
 
     private HandlerThread mHandlerThread;
     private Handler mTonePlayerHandler;
     private TonePlayer tonePlayer;
     public boolean isRingTonePlaying = false;
 
-    public boolean mBaseTypeA = true;
+    public enum BaseType {
+        BASE_UNKNOWN,
+        BASE_A,
+        BASE_B;
+        
+        @NonNull
+        @Override
+        public String toString() {
+            switch(this) {
+                case BASE_UNKNOWN: return "Base X";
+                case BASE_A: return "Base A";
+                case BASE_B: return "Base B";
+            }
+            return "Base X";
+        }
+    }
+
+    public BaseType mBaseType = BaseType.BASE_UNKNOWN;
+    public boolean mTriggerBaseA = true;
+
     public boolean mBaseStarted = false;
     public boolean mSystemSettingsFetched = false;
     public boolean mCameraSettingsFetched = false;
@@ -84,29 +104,15 @@ public class MainActivity extends AppCompatActivity {
                     String s = msg.obj.toString();
                     TextView status = (TextView) findViewById(R.id.textview_status);
                     if(TextUtils.equals(s, "#Started")) {
-                        status.setText("Started ...");
+                        status.setText(mBaseType.toString() + " Started ...");
                         mBaseStarted = true;
-                        Toast.makeText(mContext,"F3F Base Started", Toast.LENGTH_SHORT).show();
+                        //Toast.makeText(mContext,"F3F Base Started", Toast.LENGTH_SHORT).show();
                     } else if(TextUtils.equals(s, "#Stopped")) {
-                        status.setText("Stopped !!!");
+                        status.setText(mBaseType.toString() + " Stopped !!!");
                         mBaseStarted = false;
-                        Toast.makeText(mContext, "F3F Base Stopped", Toast.LENGTH_SHORT).show();
+                        //Toast.makeText(mContext, "F3F Base Stopped", Toast.LENGTH_SHORT).show();
                     } else if(s != null) {
-                        if(s.startsWith("#Trigger:")) {
-                            System.out.println(s);
-                            int i = Integer.parseInt(s.substring(9));
-                            if(i != serNo) {
-                                if(isRingTonePlaying == false) {
-                                    System.out.println("Play tone ...");
-                                    isRingTonePlaying = true;
-                                    tonePlayer.startPlay();
-                                    mTonePlayerHandler.post(ringTonePlayerThread);
-
-                                    //Toast.makeText(mContext, "F3F Base Trigger", Toast.LENGTH_SHORT).show();
-                                }
-                                serNo = i;
-                            }
-                        } else if(s.startsWith("#SystemSettings")) {
+                        if(s.startsWith("#SystemSettings")) {
                             //SharedPreferences sp = getSharedPreferences("SystemSettings", MODE_PRIVATE);
                             //SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(MainActivity.this);
                             SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(getApplicationContext());
@@ -128,10 +134,10 @@ public class MainActivity extends AppCompatActivity {
                                     if (TextUtils.equals(keyValue[0], "base.type")) {
                                         if (TextUtils.equals(keyValue[1], "A")) {
                                             editor.putString("base_type", "base_a");
-                                            mBaseTypeA = true;
+                                            mBaseType = BaseType.BASE_A;
                                         } else if (TextUtils.equals(keyValue[1], "B")) {
                                             editor.putString("base_type", "base_b");
-                                            mBaseTypeA = false;
+                                            mBaseType = BaseType.BASE_B;
                                         }
                                     } else if (TextUtils.equals(keyValue[0], "base.mog2.threshold")) {
                                         editor.putInt("mog2_threshold", Integer.parseInt(keyValue[1]));
@@ -312,6 +318,7 @@ public class MainActivity extends AppCompatActivity {
         System.out.println("DNS 2 : " + stringAddress(dhcp.dns2));
 
         TextView wifi_ssid = (TextView) findViewById(R.id.textview_ssid);
+        TextView status = (TextView) findViewById(R.id.textview_status);
 
         ConnectionUtil mConnectionMonitor = new ConnectionUtil(this);
         mConnectionMonitor.onInternetStateListener(new ConnectionUtil.ConnectionStateListener() {
@@ -324,8 +331,8 @@ public class MainActivity extends AppCompatActivity {
                         wifi_ssid.setText(wifiInfo.getSSID());
                     }
                 } else {
-                    wifi_ssid.setText("Unknown SSID");
-
+                    wifi_ssid.setText("Wifi disconnected !!!");
+                    status.setText("Standby ...");
                     DragonEyeApplication.getInstance().mBaseAddress = "0.0.0.0";
                     mSystemSettingsFetched = false;
                     mCameraSettingsFetched = false;
@@ -367,6 +374,32 @@ public class MainActivity extends AppCompatActivity {
                                     DragonEyeApplication.getInstance().mUdpClient.send(DragonEyeApplication.getInstance().mBaseAddress, UDP_REMOTE_PORT, payloadString);
                                     payloadString = "#Status";
                                     DragonEyeApplication.getInstance().mUdpClient.send(DragonEyeApplication.getInstance().mBaseAddress, UDP_REMOTE_PORT, payloadString);
+                                }
+                            } else if(TextUtils.equals(baseHost[0], "TRIGGER_A")) {
+                                int i =  Integer.parseInt(baseHost[1]);
+                                if(i != serNoA) {
+                                    if(isRingTonePlaying == false) {
+                                        System.out.println("Play tone ...");
+                                        isRingTonePlaying = true;
+                                        tonePlayer.startPlay();
+                                        mTriggerBaseA = true;
+                                        mTonePlayerHandler.post(ringTonePlayerThread);
+                                        //Toast.makeText(mContext, "F3F Base Trigger", Toast.LENGTH_SHORT).show();
+                                    }
+                                    serNoA = i;
+                                }
+                            } else if(TextUtils.equals(baseHost[0], "TRIGGER_B")) {
+                                int i =  Integer.parseInt(baseHost[1]);
+                                if(i != serNoB) {
+                                    if(isRingTonePlaying == false) {
+                                        System.out.println("Play tone ...");
+                                        isRingTonePlaying = true;
+                                        tonePlayer.startPlay();
+                                        mTriggerBaseA = false;
+                                        mTonePlayerHandler.post(ringTonePlayerThread);
+                                        //Toast.makeText(mContext, "F3F Base Trigger", Toast.LENGTH_SHORT).show();
+                                    }
+                                    serNoB = i;
                                 }
                             }
                         }
@@ -466,10 +499,11 @@ public class MainActivity extends AppCompatActivity {
         public void run() {
             byte[] buffer = new byte[160];
             InputStream is;
-            if(mBaseTypeA)
+            if(mTriggerBaseA)
                 is = getResources().openRawResource(R.raw.r_a);
             else
                 is = getResources().openRawResource(R.raw.r_b);
+
             try {
                 while (is.read(buffer) != -1) {
                     tonePlayer.play(buffer);
