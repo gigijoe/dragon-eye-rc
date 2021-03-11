@@ -34,8 +34,13 @@ public class SystemSettingsActivity extends AppCompatActivity {
                 case 1: /* RX */
                     //udpRcvStrBuf.append(msg.obj.toString());
                     //txt_Recv.setText(udpRcvStrBuf.toString());
-                    System.out.println("UDP RX : " + msg.obj.toString());
-                    String s = msg.obj.toString();
+                    //System.out.println("UDP RX : " + msg.obj.toString());
+                    //String s = msg.obj.toString();
+                    String str = msg.obj.toString();
+                    System.out.println("UDP RX : " + str);
+                    int index = str.indexOf(':');
+                    String addr = str.substring(0, index);
+                    String s = str.substring(index+1);
                     if(TextUtils.equals(s, "#Ack")) {
                         Toast.makeText(mContext,"Update Successful", Toast.LENGTH_SHORT).show();
                     }

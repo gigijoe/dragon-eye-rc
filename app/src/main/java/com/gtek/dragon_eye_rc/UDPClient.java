@@ -95,7 +95,9 @@ public class UDPClient implements Runnable {
             try {
                 Log.i("udpClient", "UDP监听");
                 socket.receive(packetRcv);
-                String RcvMsg = new String(packetRcv.getData(), packetRcv.getOffset(), packetRcv.getLength());
+                //packetRcv.getAddress().getHostAddress()
+                String RcvMsg = packetRcv.getAddress().getHostAddress() + ":" + new String(packetRcv.getData(), packetRcv.getOffset(), packetRcv.getLength());
+                //String RcvMsg = new String(packetRcv.getData(), packetRcv.getOffset(), packetRcv.getLength());
                 //将收到的消息发给主界面
                 Intent intent = new Intent();
                 intent.setAction("udpMsg");

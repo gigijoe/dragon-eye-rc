@@ -33,8 +33,13 @@ public class CameraSettingsActivity extends AppCompatActivity {
                 case 1: /* RX */
                     //udpRcvStrBuf.append(msg.obj.toString());
                     //txt_Recv.setText(udpRcvStrBuf.toString());
-                    System.out.println("UDP RX : " + msg.obj.toString());
-                    String s = msg.obj.toString();
+                    //System.out.println("UDP RX : " + msg.obj.toString());
+                    //String s = msg.obj.toString();
+                    String str = msg.obj.toString();
+                    System.out.println("UDP RX : " + str);
+                    int index = str.indexOf(':');
+                    String addr = str.substring(0, index);
+                    String s = str.substring(index+1);
                     if(TextUtils.equals(s, "#Ack")) {
                         Toast.makeText(mContext,"Update Successful", Toast.LENGTH_SHORT).show();
                     }
@@ -105,8 +110,8 @@ public class CameraSettingsActivity extends AppCompatActivity {
 
                 udpPayload.append("\n");
 
-                Integer i = sp.getInt("tnr_strength", 100); /* Default value 100 */
-                udpPayload.append("tnr-strength=" + (float)i / 100);
+                Integer i = sp.getInt("tnr_strength", 10); /* Default value 100 */
+                udpPayload.append("tnr-strength=" + (float)i / 10);
 
                 udpPayload.append("\n");
 
@@ -116,20 +121,20 @@ public class CameraSettingsActivity extends AppCompatActivity {
                 udpPayload.append("\n");
 
                 i = sp.getInt("ee_strength", 0); /* Default value 0 */
-                udpPayload.append("ee-strength=" + i / 100);
+                udpPayload.append("ee-strength=" + (float)i / 10);
 
                 udpPayload.append("\n");
 
                 udpPayload.append("gainrange=\"1 16\"\n");
                 udpPayload.append("ispdigitalgainrange=\"1 8\"\n");
-                udpPayload.append("exposuretimerange=\"5000000 20000000\"\n");
+                udpPayload.append("exposuretimerange=\"5000000 10000000\"\n");
 
                 i = sp.getInt("exposure_compensation", 0); /* Default value 0 */
-                udpPayload.append("exposurecompensation=" + (float)i / 200);
+                udpPayload.append("exposurecompensation=" + (float)i / 20);
 
                 udpPayload.append("\n");
 
-                i = sp.getInt("exposure_threshold", 255); /* Default value 255 */
+                i = sp.getInt("exposure_threshold", 5); /* Default value 5 */
                 udpPayload.append("exposurethreshold=" + i);
 
                 udpPayload.append("\n");

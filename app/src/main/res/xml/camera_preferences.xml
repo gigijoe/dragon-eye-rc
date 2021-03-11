@@ -26,11 +26,11 @@
             android:title="Noise Reduction"
             app:useSimpleSummaryProvider="true" />
         <SeekBarPreference
-            android:defaultValue="100"
+            android:defaultValue="10"
             android:key="tnr_strength"
-            android:max="100"
+            android:max="10"
             android:title="Noise Reduction Strength"
-            app:min="-100"
+            app:min="-10"
             app:showSeekBarValue="true" />
         <ListPreference
             android:defaultValue="1"
@@ -42,21 +42,21 @@
         <SeekBarPreference
             android:defaultValue="0"
             android:key="ee_strength"
-            android:max="100"
+            android:max="10"
             android:title="Edge Enhancement Strength"
-            app:min="-100"
+            app:min="-10"
             app:showSeekBarValue="true" />
         <SeekBarPreference
             android:defaultValue="0"
             android:key="exposure_compensation"
-            android:max="200"
+            android:max="20"
             android:title="Exposure Compensation"
-            app:min="-200"
+            app:min="-20"
             app:showSeekBarValue="true" />
         <SeekBarPreference
-            android:defaultValue="255"
+            android:defaultValue="5"
             android:key="exposure_threshold"
-            android:max="255"
+            android:max="5"
             android:title="Exposure Threshold"
             app:min="0"
             app:showSeekBarValue="true" />

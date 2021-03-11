@@ -15,7 +15,11 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
+import android.net.ConnectivityManager;
 import android.net.DhcpInfo;
+import android.net.Network;
+import android.net.NetworkCapabilities;
+import android.net.NetworkRequest;
 import android.net.wifi.SupplicantState;
 import android.net.wifi.WifiInfo;
 import android.net.wifi.WifiManager;
@@ -27,9 +31,14 @@ import android.os.Looper;
 import android.os.Message;
 import android.text.TextUtils;
 import android.util.Log;
+import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
+import android.view.ViewGroup;
+import android.widget.AdapterView;
+import android.widget.BaseAdapter;
+import android.widget.ListView;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -40,12 +49,15 @@ import androidx.preference.PreferenceManager;
 
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 
+import org.w3c.dom.Text;
+
 import java.io.IOException;
 import java.io.InputStream;
 import java.math.BigInteger;
 import java.net.DatagramPacket;
 import java.net.InetAddress;
 import java.net.MulticastSocket;
+import java.net.SocketTimeoutException;
 import java.net.UnknownHostException;
 import java.nio.ByteOrder;
 import java.nio.charset.StandardCharsets;
@@ -65,6 +77,7 @@ public class MainActivity extends AppCompatActivity {
     private Handler mTonePlayerHandler;
     private TonePlayer tonePlayer;
     public boolean isRingTonePlaying = false;
+    public boolean isWifiConnected = false;
 
     public enum BaseType {
         BASE_UNKNOWN,
@@ -86,11 +99,17 @@ public class MainActivity extends AppCompatActivity {
     public BaseType mBaseType = BaseType.BASE_UNKNOWN;
     public boolean mTriggerBaseA = true;
 
-    public boolean mBaseStarted = false;
+    public boolean mBaseStartedA = false;
+    public boolean mBaseStartedB = false;
+
     public boolean mSystemSettingsFetched = false;
     public boolean mCameraSettingsFetched = false;
 
     private WifiManager.MulticastLock mMulticastLock = null;
+
+    public ListView mListView;
+    public lvAdapter mListAdapter;
+    public TextView mStatusView;
 
     private final Handler mHandler = new Handler(Looper.getMainLooper()) {
         @Override
@@ -98,23 +117,44 @@ public class MainActivity extends AppCompatActivity {
             super.handleMessage(msg);
             switch (msg.what) {
                 case 1: /* RX */
+                    String str = msg.obj.toString();
+                    System.out.println("UDP RX : " + str);
+                    int index = str.indexOf(':');
+                    String addr = str.substring(0, index);
+                    String s = str.substring(index+1);
                     //udpRcvStrBuf.append(msg.obj.toString());
                     //txt_Recv.setText(udpRcvStrBuf.toString());
-                    System.out.println("UDP RX : " + msg.obj.toString());
-                    String s = msg.obj.toString();
-                    TextView status = (TextView) findViewById(R.id.textview_status);
+                    //System.out.println("UDP RX : " + msg.obj.toString());
+                    index = -1;
+                    if(TextUtils.equals(DragonEyeApplication.getInstance().mBaseAddressA, addr))
+                        index = 0;
+                    else if(TextUtils.equals(DragonEyeApplication.getInstance().mBaseAddressB, addr))
+                        index = 1;
+                    //TextView status = (TextView) findViewById(R.id.textview_status);
                     if(TextUtils.equals(s, "#Started")) {
-                        status.setText(mBaseType.toString() + " Started ...");
-                        mBaseStarted = true;
+                        if(index == 0 || index == 1) {
+                            mListAdapter.updateView(index, mListView, null, "Started ...");
+                            switch(index) {
+                                case 0: mBaseStartedA = true;
+                                    break;
+                                case 1: mBaseStartedB = true;
+                                    break;
+                            }
+                        }
                         //Toast.makeText(mContext,"F3F Base Started", Toast.LENGTH_SHORT).show();
                     } else if(TextUtils.equals(s, "#Stopped")) {
-                        status.setText(mBaseType.toString() + " Stopped !!!");
-                        mBaseStarted = false;
+                        if(index == 0 || index == 1) {
+                            mListAdapter.updateView(index, mListView, null, "Stopped !!!");
+                            switch(index) {
+                                case 0: mBaseStartedA = false;
+                                    break;
+                                case 1: mBaseStartedB = false;
+                                    break;
+                            }
+                        }
                         //Toast.makeText(mContext, "F3F Base Stopped", Toast.LENGTH_SHORT).show();
                     } else if(s != null) {
                         if(s.startsWith("#SystemSettings")) {
-                            //SharedPreferences sp = getSharedPreferences("SystemSettings", MODE_PRIVATE);
-                            //SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(MainActivity.this);
                             SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(getApplicationContext());
                             SharedPreferences.Editor editor = sp.edit();
                             editor.putString("video_output", "off");
@@ -176,7 +216,6 @@ public class MainActivity extends AppCompatActivity {
                             mSystemSettingsFetched = true;
 
                         } else if(s.startsWith("#CameraSettings")) {
-                            //SharedPreferences sp = getSharedPreferences("CameraSettings", MODE_PRIVATE);
                             SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(getApplicationContext());
                             SharedPreferences.Editor editor = sp.edit();
 
@@ -202,13 +241,16 @@ public class MainActivity extends AppCompatActivity {
                                     } else if(TextUtils.equals(keyValue[0], "tnr-mode")) {
                                         editor.putString("tnr_mode", keyValue[1]);
                                     } else if(TextUtils.equals(keyValue[0], "tnr-strength")) {
-                                        editor.putInt("tnr_strength", Integer.parseInt(keyValue[1]));
+                                        //editor.putInt("tnr_strength", Integer.parseInt(keyValue[1]) * 100);
+                                        editor.putInt("tnr_strength", Math.round(Float.parseFloat(keyValue[1]) * 10));
                                     } else if(TextUtils.equals(keyValue[0], "ee-mode")) {
                                         editor.putString("ee_mode", keyValue[1]);
                                     } else if(TextUtils.equals(keyValue[0], "ee-strength")) {
-                                        editor.putInt("ee_strength", Integer.parseInt(keyValue[1]) * 100);
+                                        //editor.putInt("ee_strength", Integer.parseInt(keyValue[1]) * 100);
+                                        editor.putInt("ee_strength", Math.round(Float.parseFloat(keyValue[1]) * 10));
                                     } else if(TextUtils.equals(keyValue[0], "exposurecompensation")) {
-                                        editor.putInt("exposure_compensation", Integer.parseInt(keyValue[1]) * 200);
+                                        //editor.putInt("exposure_compensation", Integer.parseInt(keyValue[1]) * 200);
+                                        editor.putInt("exposure_compensation", Math.round(Float.parseFloat(keyValue[1]) * 20));
                                     } else if(TextUtils.equals(keyValue[0], "exposurethreshold")) {
                                         editor.putInt("exposure_threshold", Integer.parseInt(keyValue[1]));
                                     }
@@ -234,6 +276,90 @@ public class MainActivity extends AppCompatActivity {
         }
     };
 
+    String iv_name[] = {"A", "B"};
+
+    private class lvAdapter extends BaseAdapter {
+        LayoutInflater loi;
+        public lvAdapter(){
+            loi = (LayoutInflater) MainActivity.this.getSystemService(LAYOUT_INFLATER_SERVICE);
+        }
+        @Override
+        public int getCount() {
+            return iv_name.length;
+        }
+
+        @Override
+        public Object getItem(int i) {
+            return null;
+        }
+
+        @Override
+        public long getItemId(int i) {
+            return 0;
+        }
+
+        public void updateView(int index, ListView listview, String ip, String status) {
+            System.out.println("Update view with index " + index);
+            int visiblePosition = listview.getFirstVisiblePosition();
+            System.out.println("First visible position is " + visiblePosition);
+            //得到指定位置的視圖，對listview的緩存機制不清楚的可以去瞭解下
+            View view = listview.getChildAt(index - visiblePosition);
+            //View view = listview.getChildAt(index);
+            if(view == null)
+                view = listview.getAdapter().getView(index - visiblePosition, null, listview);
+            //    return;
+            viewHolder vh = (viewHolder) view.getTag();
+            if(ip != null) {
+                vh.tv_ip = (TextView) view.findViewById(R.id.tv_ip);
+                runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        vh.tv_ip.setText(ip);
+                    }
+                });
+            }
+            if(status != null) {
+                vh.tv_status = (TextView) view.findViewById(R.id.tv_status);
+                runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        vh.tv_status.setText(status);
+                    }
+                });
+            }
+        }
+
+        @Override
+        public View getView(int position, View view, ViewGroup viewGroup) {
+            final viewHolder vh;
+            //判斷view是否為空，為空才設置view
+            if (view == null) {
+                //將自訂的list_contnet灌進view裡
+                view = loi.inflate(R.layout.list_content, null);
+                //new一個VH，並將iv,tv1,tv2裝進去
+                vh = new viewHolder();
+                vh.iv_name = (TextView) view.findViewById(R.id.iv_name);
+                vh.tv_ip = (TextView) view.findViewById(R.id.tv_ip);
+                vh.tv_status = (TextView) view.findViewById(R.id.tv_status);
+                //再透過view.setTag把vh裝進去
+                view.setTag(vh);
+            } else {
+                vh = (viewHolder) view.getTag();
+            }
+            //設定iv,tv1,tv2要放置的內容
+            vh.iv_name.setText(iv_name[position]);
+            vh.tv_ip.setText("0.0.0.0");
+            vh.tv_status.setText("Off line ...");
+            return view;
+        }
+    }
+
+    //宣告類別 viewHolder，記住list_content.xml中的item
+    private class viewHolder {
+        TextView iv_name;
+        TextView tv_ip,tv_status;
+    }
+
     public static String stringAddress(int ipAddress) {
         ipAddress = (ByteOrder.nativeOrder().equals(ByteOrder.LITTLE_ENDIAN)) ?
                 Integer.reverseBytes(ipAddress) : ipAddress;
@@ -247,6 +373,121 @@ public class MainActivity extends AppCompatActivity {
         }
         return "null";
     }
+
+    Thread multicastReceiverThread = new Thread(new Runnable() { /* Multicast receiver */
+        @Override
+        public void run() {
+            MulticastSocket socket2 = null;
+            MulticastSocket socket3 = null;
+
+            try {
+                socket2 = new MulticastSocket(9002);
+                socket2.joinGroup(InetAddress.getByName("224.0.0.2"));
+                socket2.setSoTimeout(2000); /* 2000 ms */
+
+                socket3 = new MulticastSocket(9003);
+                socket3.joinGroup(InetAddress.getByName("224.0.0.3"));
+                socket3.setSoTimeout(2000); /* 2000 ms */
+
+                DatagramPacket packet;
+                while (true) {
+                    byte[] buf = new byte[256];
+                    packet = new DatagramPacket(buf, buf.length);
+
+                    socket2.receive(packet);
+                    if(packet.getLength() == 0) { /* timeout */
+                        socket3.receive(packet);
+                    }
+                    if(packet.getLength() == 0)
+                        continue;
+
+                    String msg = new String(packet.getData(), packet.getOffset(), packet.getLength());
+                    System.out.println("Multicast receive : " + msg);
+
+                    String baseHost[] = msg.split(":");
+                    if (baseHost.length >= 2) {
+                        //System.out.println(baseHost[0]);
+                        //System.out.println(baseHost[1]);
+                        if (TextUtils.equals(baseHost[0], "BASE_A") ||
+                                TextUtils.equals(baseHost[0], "BASE_B")) { /* Base found ... */
+                            int index = -1;
+                            if (TextUtils.equals(baseHost[0], "BASE_A")) {
+                                if (!TextUtils.equals(DragonEyeApplication.getInstance().mBaseAddressA, baseHost[1])) {
+                                    DragonEyeApplication.getInstance().mBaseAddressA = baseHost[1];
+                                    index = 0;
+                                }
+                            } else if (TextUtils.equals(baseHost[0], "BASE_B")) {
+                                if (!TextUtils.equals(DragonEyeApplication.getInstance().mBaseAddressB, baseHost[1])) {
+                                    DragonEyeApplication.getInstance().mBaseAddressB = baseHost[1];
+                                    index = 1;
+                                }
+                            }
+
+                            if (index >= 0) { /* Update listview required */
+                                mListAdapter.updateView(index, mListView, baseHost[1], null);
+
+                                mSystemSettingsFetched = false;
+                                String payloadString = "#SystemSettings";
+                                DragonEyeApplication.getInstance().mUdpClient.send(baseHost[1], UDP_REMOTE_PORT, payloadString);
+
+                                mCameraSettingsFetched = false;
+                                payloadString = "#CameraSettings";
+                                DragonEyeApplication.getInstance().mUdpClient.send(baseHost[1], UDP_REMOTE_PORT, payloadString);
+
+                                payloadString = "#Status";
+                                DragonEyeApplication.getInstance().mUdpClient.send(baseHost[1], UDP_REMOTE_PORT, payloadString);
+                            }
+                        } else if (TextUtils.equals(baseHost[0], "TRIGGER_A")) {
+                            int i = Integer.parseInt(baseHost[1]);
+                            if (i != serNoA) {
+                                if (isRingTonePlaying == false) {
+                                    System.out.println("Play tone ...");
+                                    isRingTonePlaying = true;
+                                    tonePlayer.startPlay();
+                                    mTriggerBaseA = true;
+                                    mTonePlayerHandler.post(ringTonePlayerThread);
+                                    //Toast.makeText(mContext, "F3F Base Trigger", Toast.LENGTH_SHORT).show();
+                                }
+                                serNoA = i;
+                            }
+                        } else if (TextUtils.equals(baseHost[0], "TRIGGER_B")) {
+                            int i = Integer.parseInt(baseHost[1]);
+                            if (i != serNoB) {
+                                if (isRingTonePlaying == false) {
+                                    System.out.println("Play tone ...");
+                                    isRingTonePlaying = true;
+                                    tonePlayer.startPlay();
+                                    mTriggerBaseA = false;
+                                    mTonePlayerHandler.post(ringTonePlayerThread);
+                                    //Toast.makeText(mContext, "F3F Base Trigger", Toast.LENGTH_SHORT).show();
+                                }
+                                serNoB = i;
+                            }
+                        }
+                    }
+                }
+            } catch(IOException e) {
+                System.out.println(e.toString());
+            } finally {
+                if(socket2 != null) {
+                    try {
+                        socket2.leaveGroup(InetAddress.getByName("224.0.0.2"));
+                        socket2.close();
+                    } catch(IOException e) {
+                        System.out.println(e.toString());
+                    }
+                }
+                if(socket3 != null) {
+                    try {
+                        socket3.leaveGroup(InetAddress.getByName("224.0.0.3"));
+                        socket3.close();
+                    } catch(IOException e) {
+                        System.out.println(e.toString());
+                    }
+                }
+            }
+        }
+    });
 
     @RequiresApi(api = Build.VERSION_CODES.LOLLIPOP)
     @Override
@@ -265,19 +506,63 @@ public class MainActivity extends AppCompatActivity {
         mTonePlayerHandler = new Handler(mHandlerThread.getLooper());
         tonePlayer = new TonePlayer();
 
+        mListView = (ListView) findViewById(R.id.lv);
+        mListAdapter = new lvAdapter();
+        mListView.setAdapter(mListAdapter);
+        mListView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
+            @Override
+            public void onItemClick(AdapterView<?> parent, View view, int position,
+                                    long id) {
+                switch(position) {
+                    case 0: DragonEyeApplication.getInstance().mBaseAddress = DragonEyeApplication.getInstance().mBaseAddressA;
+                        if(DragonEyeApplication.getInstance().mBaseAddress != null)
+                            mStatusView.setText("BASE A on line");
+                        else
+                            mStatusView.setText("BASE A off line ...");
+                        break;
+                    case 1: DragonEyeApplication.getInstance().mBaseAddress = DragonEyeApplication.getInstance().mBaseAddressB;
+                        if(DragonEyeApplication.getInstance().mBaseAddress != null)
+                            mStatusView.setText("BASE B on line");
+                        else
+                            mStatusView.setText("BASE B off line ...");
+                        break;
+                }
+                if(DragonEyeApplication.getInstance().mBaseAddress != null) {
+                    Thread thread = new Thread(new Runnable() {
+                        @Override
+                        public void run() {
+                            mSystemSettingsFetched = false;
+                            String payloadString = "#SystemSettings";
+                            DragonEyeApplication.getInstance().mUdpClient.send(DragonEyeApplication.getInstance().mBaseAddress, UDP_REMOTE_PORT, payloadString);
+                            mCameraSettingsFetched = false;
+                            payloadString = "#CameraSettings";
+                            DragonEyeApplication.getInstance().mUdpClient.send(DragonEyeApplication.getInstance().mBaseAddress, UDP_REMOTE_PORT, payloadString);
+                            payloadString = "#Status";
+                            DragonEyeApplication.getInstance().mUdpClient.send(DragonEyeApplication.getInstance().mBaseAddress, UDP_REMOTE_PORT, payloadString);
+                        }
+                    });
+                    thread.start();
+                }
+            }
+        });
+
         checkPermission();
 
         FloatingActionButton bs = findViewById(R.id.button_start);
         bs.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                if(TextUtils.equals(DragonEyeApplication.getInstance().mBaseAddress, "0.0.0.0"))
+                if(DragonEyeApplication.getInstance().mBaseAddressA == null &&
+                        DragonEyeApplication.getInstance().mBaseAddressB == null)
                     return;
                 Thread thread = new Thread(new Runnable() {
                     @Override
                     public void run() {
                         String payloadString = "#Start";
-                        DragonEyeApplication.getInstance().mUdpClient.send(DragonEyeApplication.getInstance().mBaseAddress, UDP_REMOTE_PORT, payloadString);
+                        if(DragonEyeApplication.getInstance().mBaseAddressA != null)
+                            DragonEyeApplication.getInstance().mUdpClient.send(DragonEyeApplication.getInstance().mBaseAddressA, UDP_REMOTE_PORT, payloadString);
+                        if(DragonEyeApplication.getInstance().mBaseAddressB != null)
+                            DragonEyeApplication.getInstance().mUdpClient.send(DragonEyeApplication.getInstance().mBaseAddressB, UDP_REMOTE_PORT, payloadString);
                     }
                 });
                 thread.start();
@@ -288,13 +573,17 @@ public class MainActivity extends AppCompatActivity {
         bp.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                if(TextUtils.equals(DragonEyeApplication.getInstance().mBaseAddress, "0.0.0.0"))
+                if(DragonEyeApplication.getInstance().mBaseAddressA == null &&
+                        DragonEyeApplication.getInstance().mBaseAddressB == null)
                     return;
                 Thread thread = new Thread(new Runnable() {
                     @Override
                     public void run() {
                         String payloadString = "#Stop";
-                        DragonEyeApplication.getInstance().mUdpClient.send(DragonEyeApplication.getInstance().mBaseAddress, UDP_REMOTE_PORT, payloadString);
+                        if(DragonEyeApplication.getInstance().mBaseAddressA != null)
+                            DragonEyeApplication.getInstance().mUdpClient.send(DragonEyeApplication.getInstance().mBaseAddressA, UDP_REMOTE_PORT, payloadString);
+                        if(DragonEyeApplication.getInstance().mBaseAddressB != null)
+                            DragonEyeApplication.getInstance().mUdpClient.send(DragonEyeApplication.getInstance().mBaseAddressB, UDP_REMOTE_PORT, payloadString);
                     }
                 });
                 thread.start();
@@ -309,7 +598,6 @@ public class MainActivity extends AppCompatActivity {
         mMulticastLock.setReferenceCounted(true);
         mMulticastLock.acquire();
         final DhcpInfo dhcp = manager.getDhcpInfo();
-        //DragonEyeApplication.getInstance().mBaseAddress = stringAddress(dhcp.gateway);
 
         System.out.println("IP : " + stringAddress(dhcp.ipAddress));
         System.out.println("Netmask : " + stringAddress(dhcp.netmask));
@@ -318,12 +606,13 @@ public class MainActivity extends AppCompatActivity {
         System.out.println("DNS 2 : " + stringAddress(dhcp.dns2));
 
         TextView wifi_ssid = (TextView) findViewById(R.id.textview_ssid);
-        TextView status = (TextView) findViewById(R.id.textview_status);
+        mStatusView = (TextView) findViewById(R.id.textview_status);
 
         ConnectionUtil mConnectionMonitor = new ConnectionUtil(this);
         mConnectionMonitor.onInternetStateListener(new ConnectionUtil.ConnectionStateListener() {
             @Override
             public void onWifiConnection(boolean connected) {
+                isWifiConnected = connected;
                 if (connected) {
                     WifiInfo wifiInfo = manager.getConnectionInfo();
                     if (wifiInfo.getSupplicantState() == SupplicantState.COMPLETED) {
@@ -332,95 +621,22 @@ public class MainActivity extends AppCompatActivity {
                     }
                 } else {
                     wifi_ssid.setText("Wifi disconnected !!!");
-                    status.setText("Standby ...");
-                    DragonEyeApplication.getInstance().mBaseAddress = "0.0.0.0";
+                    mStatusView.setText("Select a Base");
+                    DragonEyeApplication.getInstance().mBaseAddress = null;
+                    DragonEyeApplication.getInstance().mBaseAddressA = null;
+                    DragonEyeApplication.getInstance().mBaseAddressB = null;
                     mSystemSettingsFetched = false;
                     mCameraSettingsFetched = false;
-                    mBaseStarted = false;
+                    mBaseStartedA = false;
+                    mBaseStartedB = false;
+
+                    //mListAdapter.updateView(0, mListView, "0.0.0.0", "Off line ...");
+                    //mListAdapter.updateView(1, mListView, "0.0.0.0", "Off line ...");
                 }
             }
         });
 
-        Thread thread = new Thread(new Runnable() { /* Multicast receiver */
-            @Override
-            public void run() {
-                MulticastSocket socket = null;
-                InetAddress group = null;
-                try {
-                    socket = new MulticastSocket(9001);
-                    group = InetAddress.getByName("224.0.0.1");
-                    socket.joinGroup(group);
-
-                    DatagramPacket packet;
-                    while (true) {
-                        byte[] buf = new byte[256];
-                        packet = new DatagramPacket(buf, buf.length);
-                        socket.receive(packet);
-
-                        String msg = new String(packet.getData(), packet.getOffset(), packet.getLength());
-                        System.out.println("Multicast receive : " + msg);
-
-                        String baseHost[] = msg.split(":");
-                        if(baseHost.length >= 2) {
-                            //System.out.println(baseHost[0]);
-                            //System.out.println(baseHost[1]);
-                            if (TextUtils.equals(baseHost[0], "BASE_A") ||
-                                    TextUtils.equals(baseHost[0], "BASE_B")) { /* Base found ... */
-                                if (!TextUtils.equals(DragonEyeApplication.getInstance().mBaseAddress, baseHost[1])) {
-                                    DragonEyeApplication.getInstance().mBaseAddress = baseHost[1];
-                                    String payloadString = "#SystemSettings";
-                                    DragonEyeApplication.getInstance().mUdpClient.send(DragonEyeApplication.getInstance().mBaseAddress, UDP_REMOTE_PORT, payloadString);
-                                    payloadString = "#CameraSettings";
-                                    DragonEyeApplication.getInstance().mUdpClient.send(DragonEyeApplication.getInstance().mBaseAddress, UDP_REMOTE_PORT, payloadString);
-                                    payloadString = "#Status";
-                                    DragonEyeApplication.getInstance().mUdpClient.send(DragonEyeApplication.getInstance().mBaseAddress, UDP_REMOTE_PORT, payloadString);
-                                }
-                            } else if(TextUtils.equals(baseHost[0], "TRIGGER_A")) {
-                                int i =  Integer.parseInt(baseHost[1]);
-                                if(i != serNoA) {
-                                    if(isRingTonePlaying == false) {
-                                        System.out.println("Play tone ...");
-                                        isRingTonePlaying = true;
-                                        tonePlayer.startPlay();
-                                        mTriggerBaseA = true;
-                                        mTonePlayerHandler.post(ringTonePlayerThread);
-                                        //Toast.makeText(mContext, "F3F Base Trigger", Toast.LENGTH_SHORT).show();
-                                    }
-                                    serNoA = i;
-                                }
-                            } else if(TextUtils.equals(baseHost[0], "TRIGGER_B")) {
-                                int i =  Integer.parseInt(baseHost[1]);
-                                if(i != serNoB) {
-                                    if(isRingTonePlaying == false) {
-                                        System.out.println("Play tone ...");
-                                        isRingTonePlaying = true;
-                                        tonePlayer.startPlay();
-                                        mTriggerBaseA = false;
-                                        mTonePlayerHandler.post(ringTonePlayerThread);
-                                        //Toast.makeText(mContext, "F3F Base Trigger", Toast.LENGTH_SHORT).show();
-                                    }
-                                    serNoB = i;
-                                }
-                            }
-                        }
-                    }
-                } catch(IOException e) {
-                    System.out.println(e.toString());
-                } finally {
-                    if(socket != null) {
-                        try {
-                            if (group != null)
-                                socket.leaveGroup(group);
-
-                            socket.close();
-                        } catch(IOException e) {
-
-                        }
-                    }
-                }
-            }
-        });
-        thread.start();
+        multicastReceiverThread.start();
     }
 
     @Override
@@ -438,24 +654,27 @@ public class MainActivity extends AppCompatActivity {
                     wifi_ssid.setText(wifiInfo.getSSID());
                 }
 
-                if(TextUtils.equals(DragonEyeApplication.getInstance().mBaseAddress, "0.0.0.0"))
+                if(DragonEyeApplication.getInstance().mBaseAddressA == null && DragonEyeApplication.getInstance().mBaseAddressB == null)
                     return;
-                
+
                 Thread thread = new Thread(new Runnable() {
                     @Override
                     public void run() {
-                        if(mSystemSettingsFetched == false) {
-                            String payloadString = "#SystemSettings";
-                            DragonEyeApplication.getInstance().mUdpClient.send(DragonEyeApplication.getInstance().mBaseAddress, UDP_REMOTE_PORT, payloadString);
-                        }
+                        if(DragonEyeApplication.getInstance().mBaseAddress != null) {
+                            if(mSystemSettingsFetched == false) {
+                                String payloadString = "#SystemSettings";
+                                DragonEyeApplication.getInstance().mUdpClient.send(DragonEyeApplication.getInstance().mBaseAddress, UDP_REMOTE_PORT, payloadString);
+                            }
 
-                        if(mCameraSettingsFetched == false) {
-                            String payloadString = "#CameraSettings";
-                            DragonEyeApplication.getInstance().mUdpClient.send(DragonEyeApplication.getInstance().mBaseAddress, UDP_REMOTE_PORT, payloadString);
+                            if(mCameraSettingsFetched == false) {
+                                String payloadString = "#CameraSettings";
+                                DragonEyeApplication.getInstance().mUdpClient.send(DragonEyeApplication.getInstance().mBaseAddress, UDP_REMOTE_PORT, payloadString);
+                            }
                         }
                     }
                 });
                 thread.start();
+
             }
         }
     }
@@ -536,9 +755,15 @@ public class MainActivity extends AppCompatActivity {
     public boolean onOptionsItemSelected(@NonNull MenuItem item) {
         switch(item.getItemId()) {
             case R.id.item_rtsp_video:
-                if(mBaseStarted == false) {
-                    Toast.makeText(mContext,"Base stopped !!!",Toast.LENGTH_SHORT).show();
+                if(DragonEyeApplication.getInstance().mBaseAddress == null)
                     break;
+                if(TextUtils.equals(DragonEyeApplication.getInstance().mBaseAddress, DragonEyeApplication.getInstance().mBaseAddressA)) {
+                    if (mBaseStartedA == false)
+                        break;
+                }
+                if(TextUtils.equals(DragonEyeApplication.getInstance().mBaseAddress, DragonEyeApplication.getInstance().mBaseAddressB)) {
+                    if (mBaseStartedB == false)
+                        break;
                 }
                 Intent intent = new Intent(getApplicationContext(), VideoActivity.class);
                 //intent.putExtra(VideoActivity.RTSP_URL, "RTSP://172.16.0.1:8554/test");
@@ -546,6 +771,8 @@ public class MainActivity extends AppCompatActivity {
                 startActivity(intent);
                 break;
             case R.id.item_system_setup:
+                if(DragonEyeApplication.getInstance().mBaseAddress == null)
+                    break;
                 if(mSystemSettingsFetched == false) {
                     Toast.makeText(mContext,"Fail to fetch System Settings !!!",Toast.LENGTH_SHORT).show();
                     break;
@@ -554,6 +781,8 @@ public class MainActivity extends AppCompatActivity {
                 startActivity(intent);
                 break;
             case R.id.item_camera_setup:
+                if(DragonEyeApplication.getInstance().mBaseAddress == null)
+                    break;
                 if(mCameraSettingsFetched == false) {
                     Toast.makeText(mContext,"Fail to fetch Camera Settings !!!",Toast.LENGTH_SHORT).show();
                     break;
