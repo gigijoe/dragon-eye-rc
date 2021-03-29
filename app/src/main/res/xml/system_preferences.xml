@@ -20,6 +20,14 @@
             android:defaultValue="false"
             android:key="new_target_restriction"
             android:title="New Target Restriction" />
+        <SwitchPreference
+            android:defaultValue="false"
+            android:key="fake_target_detection"
+            android:title="Fake Target Detection" />
+        <SwitchPreference
+            android:defaultValue="false"
+            android:key="bug_trigger"
+            android:title="Bug Trigger" />
     </PreferenceCategory>
     <PreferenceCategory android:title="Video">
         <ListPreference

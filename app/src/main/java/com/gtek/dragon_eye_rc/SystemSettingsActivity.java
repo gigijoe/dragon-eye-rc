@@ -125,7 +125,20 @@ public class SystemSettingsActivity extends AppCompatActivity {
                     udpPayload.append("base.new.target.restriction=yes");
                 else
                     udpPayload.append("base.new.target.restriction=no");
+                udpPayload.append("\n");
 
+                b = sp.getBoolean("fake_target_detection", false);
+                if(b)
+                    udpPayload.append("base.fake.target.detection=yes");
+                else
+                    udpPayload.append("base.fake.target.detection=no");
+                udpPayload.append("\n");
+
+                b = sp.getBoolean("bug_trigger", false);
+                if(b)
+                    udpPayload.append("base.bug.trigger=yes");
+                else
+                    udpPayload.append("base.bug.trigger=no");
                 udpPayload.append("\n");
 
                 s = sp.getString("video_output", "");
@@ -133,28 +146,24 @@ public class SystemSettingsActivity extends AppCompatActivity {
                     udpPayload.append("video.output.screen=yes");
                 else
                     udpPayload.append("video.output.screen=no");
-
                 udpPayload.append("\n");
 
                 if(s.equals("rtp"))
                     udpPayload.append("video.output.rtp=yes");
                 else
                     udpPayload.append("video.output.rtp=no");
-
                 udpPayload.append("\n");
 
                 if(s.equals("hls"))
                     udpPayload.append("video.output.hls=yes");
                 else
                     udpPayload.append("video.output.hls=no");
-
                 udpPayload.append("\n");
 
                 if(s.equals("rtsp"))
                     udpPayload.append("video.output.rtsp=yes");
                 else
                     udpPayload.append("video.output.rtsp=no");
-
                 udpPayload.append("\n");
 
                 b = sp.getBoolean("save_file", false);
@@ -162,7 +171,6 @@ public class SystemSettingsActivity extends AppCompatActivity {
                     udpPayload.append("video.output.file=yes");
                 else
                     udpPayload.append("video.output.file=no");
-
                 udpPayload.append("\n");
 
                 b = sp.getBoolean("show_result", false);
@@ -170,7 +178,6 @@ public class SystemSettingsActivity extends AppCompatActivity {
                     udpPayload.append("video.output.result=yes");
                 else
                     udpPayload.append("video.output.result=no");
-
                 udpPayload.append("\n");
 
                 //System.out.println(udpPayload.toString());
