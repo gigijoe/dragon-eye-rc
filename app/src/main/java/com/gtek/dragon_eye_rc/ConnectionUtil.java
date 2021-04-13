@@ -7,6 +7,7 @@ import android.content.IntentFilter;
 import android.net.ConnectivityManager;
 import android.net.Network;
 import android.net.NetworkCapabilities;
+import android.net.NetworkInfo;
 import android.os.Build;
 
 import androidx.appcompat.app.AppCompatActivity;
@@ -61,19 +62,32 @@ class ConnectionUtil implements LifecycleObserver {
             if (intent.getExtras() != null) {
                 ConnectivityManager connectivityManager = (ConnectivityManager) mContext.getSystemService(Context.CONNECTIVITY_SERVICE);
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+
+                    boolean isWifiConnected = false;
                     Network nw = connectivityManager.getActiveNetwork();
                     if (nw != null) {
                         NetworkCapabilities actNw = connectivityManager.getNetworkCapabilities(nw);
                         if(actNw != null) {
                             if(actNw.hasTransport(NetworkCapabilities.TRANSPORT_WIFI)) {
                                 //System.out.println("Wifi connected ...");
-                                mListener.onWifiConnection(true);
-                            } else {
-                                //System.out.println("Wifi connection lost !!!");
-                                mListener.onWifiConnection(false);
+                                isWifiConnected = true;
                             }
                         }
                     }
+
+                    mListener.onWifiConnection(isWifiConnected);
+                } else {
+                    boolean isWifiConnected = false;
+                    Network[] networks = connectivityManager.getAllNetworks();
+                    NetworkInfo networkInfo;
+                    for (Network mNetwork : networks) {
+                        networkInfo = connectivityManager.getNetworkInfo(mNetwork);
+                        if (networkInfo != null && networkInfo.getType() == ConnectivityManager.TYPE_WIFI && networkInfo.getState() == NetworkInfo.State.CONNECTED) {
+                            isWifiConnected = true;
+                        }
+                    }
+
+                    mListener.onWifiConnection(isWifiConnected);
                 }
             }
         }

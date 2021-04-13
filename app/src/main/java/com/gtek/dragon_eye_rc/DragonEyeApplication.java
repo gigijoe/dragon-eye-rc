@@ -1,11 +1,17 @@
 package com.gtek.dragon_eye_rc;
 
 import android.app.Application;
+import android.content.BroadcastReceiver;
 import android.content.Context;
+import android.content.Intent;
 import android.net.ConnectivityManager;
 import android.net.Network;
 import android.net.NetworkCapabilities;
+import android.net.NetworkInfo;
 import android.net.NetworkRequest;
+import android.net.wifi.WifiInfo;
+import android.net.wifi.WifiManager;
+import android.util.Log;
 
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -43,14 +49,21 @@ public class DragonEyeApplication extends Application {
 
         mInstance = this;
 
-        ExecutorService exec = Executors.newCachedThreadPool();
-        mUdpClient = new UDPClient(this);
-        exec.execute(mUdpClient);
+        mUdpClient = new UDPClient(getApplicationContext());
+        mUdpClient.start();
     }
 
     @Override
     public void onTerminate() {
-        mUdpClient.setUdpLife(false);
+        Log.i("DragonEyeApplication", "onTerminate");
+        mUdpClient.stop();
         super.onTerminate();
     }
+/*
+    public void StartUdpClient() {
+        ExecutorService exec = Executors.newCachedThreadPool();
+        if(mUdpClient.isRunning() == false)
+            exec.execute(mUdpClient);
+    }
+ */
 }

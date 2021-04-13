@@ -1,16 +1,24 @@
 package com.gtek.dragon_eye_rc;
 
+import android.annotation.SuppressLint;
 import android.content.Context;
 import android.content.Intent;
+import android.net.DhcpInfo;
+import android.net.wifi.SupplicantState;
+import android.net.wifi.WifiInfo;
+import android.net.wifi.WifiManager;
 import android.util.Log;
 
 import java.io.IOException;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
+import java.net.InetSocketAddress;
 import java.net.SocketException;
 import java.net.SocketTimeoutException;
 import java.net.UnknownHostException;
+import java.nio.ByteBuffer;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * Created by lenovo on 2016/2/23.
@@ -21,46 +29,48 @@ public class UDPClient implements Runnable {
     private Context mContext;
     private static DatagramSocket socket = null;
     private static DatagramPacket packetSend, packetRcv;
-    private boolean udpLife = true; //udp生命线程
+    private Thread worker;
+    private final AtomicBoolean running = new AtomicBoolean(false);
     private byte[] msgRcv = new byte[1024]; //接收消息
+    private int localAddr = 0;
+    private int networkId = -1;
 
     public UDPClient(Context context) {
         super();
         mContext = context;
     }
 
-    //返回udp生命线程因子是否存活
-    public boolean isUdpLife() {
-        if (udpLife) {
-            return true;
-        }
-
-        return false;
+    public boolean isRunning() {
+        return running.get();
     }
 
-    //更改UDP生命线程因子
-    public void setUdpLife(boolean b) {
-        udpLife = b;
+    public void interrupt() {
+        running.set(false);
+        worker.interrupt();
+    }
+
+    public void start() {
+        worker = new Thread(this);
+        worker.start();
+    }
+
+    public void stop() {
+        running.set(false);
     }
 
     //发送消息
     public String send(String hostIp, int udpPort, String msgSend) {
         InetAddress hostAddress = null;
 
+        if(socket == null)
+            return null;
+
         try {
             hostAddress = InetAddress.getByName(hostIp);
         } catch (UnknownHostException e) {
-            Log.i("udpClient", "未找到服务器");
+            Log.i("UDPClient", "Unknown host");
             e.printStackTrace();
         }
-
-/*      try {
-            socket = new DatagramSocket();
-        } catch (SocketException e) {
-            Log.i("udpClient","建立发送数据报失败");
-            e.printStackTrace();
-        }
-*/
 
         packetSend = new DatagramPacket(msgSend.getBytes(), msgSend.getBytes().length, hostAddress, udpPort);
 
@@ -75,25 +85,73 @@ public class UDPClient implements Runnable {
 
         } catch (IOException e) {
             e.printStackTrace();
-            Log.i("udpClient", "发送失败");
+            Log.i("UDPClient", "Send packet fail !!!");
         }
-        //   socket.close();
+
         return msgSend;
     }
 
     @Override
     public void run() {
-        try {
-            socket = new DatagramSocket();
-            socket.setSoTimeout(3000);//设置超时为3s
-        } catch (SocketException e) {
-            Log.i("udpClient", "建立接收数据报失败");
-            e.printStackTrace();
-        }
+        running.set(true);
+
+        System.out.println("UDPClient - Started ...");
+
         packetRcv = new DatagramPacket(msgRcv, msgRcv.length);
-        while (udpLife) {
+
+        @SuppressLint("WifiManagerLeak") final WifiManager wifiManager = (WifiManager) mContext.getSystemService(Context.WIFI_SERVICE);
+
+        while (running.get()) {
+            if(wifiManager.isWifiEnabled() == false)
+                continue;
+
+            WifiInfo wifiInfo = wifiManager.getConnectionInfo();
+            if (wifiInfo.getNetworkId() == -1)
+                continue;
+
+            if (wifiInfo.getSupplicantState() != SupplicantState.COMPLETED)
+                continue;
+
+            int addr = wifiManager.getDhcpInfo().ipAddress;
+            if(addr != localAddr || networkId != wifiInfo.getNetworkId()) {
+                localAddr = addr;
+                networkId = wifiInfo.getNetworkId();
+
+                ByteBuffer tmp = ByteBuffer.allocate(4);
+                tmp.putInt(addr);
+                InetAddress localInetAddress = null;
+                InetSocketAddress isa = null;
+                try {
+                    localInetAddress = InetAddress.getByAddress(tmp.array());
+                    isa = new InetSocketAddress(InetAddress.getByAddress(tmp.array()), 0);
+                } catch (UnknownHostException e) {
+                    e.printStackTrace();
+                }
+
+                System.out.println("UDPClient - Wifi SSID : " + wifiInfo.getSSID());
+                System.out.println("Bind address " + localInetAddress);
+
+                if(socket != null) {
+                    socket.close();
+                    socket = null;
+                }
+
+                try {
+                    socket = new DatagramSocket();
+                    socket.setReuseAddress(true);
+                    socket.bind(isa);
+                    //socket.setSoTimeout(3000);//设置超时为3s
+                } catch (SocketException e) {
+                    e.printStackTrace();
+                }
+            }
+
+            if(socket == null)
+                continue;
+            
             try {
                 Log.i("udpClient", "UDP监听");
+                socket.setSoTimeout(3000);//设置超时为3s
                 socket.receive(packetRcv);
                 //packetRcv.getAddress().getHostAddress()
                 String RcvMsg = packetRcv.getAddress().getHostAddress() + ":" + new String(packetRcv.getData(), packetRcv.getOffset(), packetRcv.getLength());
@@ -115,7 +173,16 @@ public class UDPClient implements Runnable {
             }
         }
 
-        Log.i("udpClient", "UDP监听关闭");
-        socket.close();
+        if(socket != null) {
+            socket.close();
+            socket = null;
+        }
+
+        localAddr = 0;
+        networkId = -1;
+
+        System.out.println("UDPClient - Stopped ...");
+
+        running.set(false);
     }
 }

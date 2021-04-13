@@ -19,6 +19,7 @@ import android.net.ConnectivityManager;
 import android.net.DhcpInfo;
 import android.net.Network;
 import android.net.NetworkCapabilities;
+import android.net.NetworkInfo;
 import android.net.NetworkRequest;
 import android.net.wifi.SupplicantState;
 import android.net.wifi.WifiInfo;
@@ -55,12 +56,19 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.math.BigInteger;
 import java.net.DatagramPacket;
+import java.net.DatagramSocket;
 import java.net.InetAddress;
+import java.net.InetSocketAddress;
 import java.net.MulticastSocket;
+import java.net.NetworkInterface;
+import java.net.SocketException;
 import java.net.SocketTimeoutException;
 import java.net.UnknownHostException;
+import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.charset.StandardCharsets;
+import java.util.Enumeration;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -105,11 +113,12 @@ public class MainActivity extends AppCompatActivity {
     public boolean mSystemSettingsFetched = false;
     public boolean mCameraSettingsFetched = false;
 
-    private WifiManager.MulticastLock mMulticastLock = null;
-
     public ListView mListView;
     public lvAdapter mListAdapter;
     public TextView mStatusView;
+
+    public MulticastThread mMulticastThread2 = null;
+    public MulticastThread mMulticastThread3 = null;
 
     private final Handler mHandler = new Handler(Looper.getMainLooper()) {
         @Override
@@ -374,120 +383,235 @@ public class MainActivity extends AppCompatActivity {
         return "null";
     }
 
-    Thread multicastReceiverThread = new Thread(new Runnable() { /* Multicast receiver */
+    public static byte byteOfInt(int value, int which) {
+        int shift = which * 8;
+        return (byte)(value >> shift);
+    }
+
+    public static InetAddress intToInet(int value) {
+        byte[] bytes = new byte[4];
+        for(int i = 0; i<4; i++) {
+            bytes[i] = byteOfInt(value, i);
+        }
+        try {
+            return InetAddress.getByAddress(bytes);
+        } catch (UnknownHostException e) {
+            // This only happens if the byte array has a bad length
+            return null;
+        }
+    }
+
+    public class MulticastThread implements Runnable {
+        private Thread worker;
+        private final AtomicBoolean running = new AtomicBoolean(false);
+        private int localAddr = 0;
+        private int networkId = -1;
+
+        private String mAddress = null;
+        private int mPort = 0;
+
+        public MulticastThread(String address, int port) {
+            super();
+            mAddress = new String(address);
+            mPort = port;
+        }
+
+        public boolean isRunning() {
+            return running.get();
+        }
+
+        public void interrupt() {
+            running.set(false);
+            worker.interrupt();
+        }
+
+        public void start() {
+            worker = new Thread(this);
+            worker.start();
+        }
+
+        public void stop() {
+            running.set(false);
+        }
+
         @Override
         public void run() {
-            MulticastSocket socket2 = null;
-            MulticastSocket socket3 = null;
+            running.set(true);
 
+            System.out.println("multicastThread - Started ...");
+
+            MulticastSocket socket = null;
+            InetAddress group = null;
             try {
-                socket2 = new MulticastSocket(9002);
-                socket2.joinGroup(InetAddress.getByName("224.0.0.2"));
-                socket2.setSoTimeout(2000); /* 2000 ms */
+                group = InetAddress.getByName(mAddress);
+            } catch (UnknownHostException e) {
+                e.printStackTrace();
+            }
 
-                socket3 = new MulticastSocket(9003);
-                socket3.joinGroup(InetAddress.getByName("224.0.0.3"));
-                socket3.setSoTimeout(2000); /* 2000 ms */
+            @SuppressLint("WifiManagerLeak") final WifiManager wifiManager = (WifiManager) getApplicationContext().getSystemService(Context.WIFI_SERVICE);
 
-                DatagramPacket packet;
-                while (true) {
-                    byte[] buf = new byte[256];
-                    packet = new DatagramPacket(buf, buf.length);
+            WifiManager.MulticastLock lock = wifiManager.createMulticastLock("mylock");
+            lock.setReferenceCounted(true);
+            lock.acquire();
 
-                    socket2.receive(packet);
-                    if(packet.getLength() == 0) { /* timeout */
-                        socket3.receive(packet);
+            DatagramPacket packet;
+            while (running.get()) {
+                if (wifiManager.isWifiEnabled() == false)
+                    continue;
+
+                WifiInfo wifiInfo = wifiManager.getConnectionInfo();
+                if (wifiInfo.getNetworkId() == -1)
+                    continue;
+
+                if (wifiInfo.getSupplicantState() != SupplicantState.COMPLETED)
+                    continue;
+
+                int addr = wifiManager.getDhcpInfo().ipAddress;
+                if (localAddr != addr || networkId != wifiInfo.getNetworkId()) {
+                    localAddr = addr;
+                    networkId = wifiInfo.getNetworkId();
+
+                    try {
+                        InetAddress localInetAddress = intToInet(addr);
+
+                        NetworkInterface ni = NetworkInterface.getByInetAddress(localInetAddress);
+                        if(ni != null)
+                            System.out.println("multicastThread - Wifi interface : " + ni.getDisplayName() + ", address :" + localInetAddress);
+                        else
+                            System.out.println("multicastThread - NetworkInterface.getByInetAddress " + localInetAddress + " fail !!!");
+/*
+                        Enumeration<NetworkInterface> nis = NetworkInterface.getNetworkInterfaces();
+                        while (nis.hasMoreElements())
+                            System.out.println(nis.nextElement());
+*/
+                        System.out.println("multicastThread - Wifi SSID : " + wifiInfo.getSSID());
+                        System.out.println("multicastThread - Bind address " + localInetAddress);
+
+                        if (socket != null) {
+                            socket.close();
+                            socket = null;
+                        }
+
+                        socket = new MulticastSocket(mPort);
+                        socket.setReuseAddress(true);
+                        //socket.bind(isa);
+                        if(ni != null)
+                            socket.setNetworkInterface(ni);
+                        socket.joinGroup(group);
+                        //socket.setSoTimeout(2000);
+                    } catch (UnknownHostException | SocketException e) {
+                        e.printStackTrace();
+                    } catch (IOException e) {
+                        e.printStackTrace();
                     }
-                    if(packet.getLength() == 0)
-                        continue;
+                }
 
-                    String msg = new String(packet.getData(), packet.getOffset(), packet.getLength());
-                    System.out.println("Multicast receive : " + msg);
+                if(socket == null)
+                    continue;
 
-                    String baseHost[] = msg.split(":");
-                    if (baseHost.length >= 2) {
-                        //System.out.println(baseHost[0]);
-                        //System.out.println(baseHost[1]);
-                        if (TextUtils.equals(baseHost[0], "BASE_A") ||
-                                TextUtils.equals(baseHost[0], "BASE_B")) { /* Base found ... */
-                            int index = -1;
-                            if (TextUtils.equals(baseHost[0], "BASE_A")) {
-                                if (!TextUtils.equals(DragonEyeApplication.getInstance().mBaseAddressA, baseHost[1])) {
-                                    DragonEyeApplication.getInstance().mBaseAddressA = baseHost[1];
-                                    index = 0;
-                                }
-                            } else if (TextUtils.equals(baseHost[0], "BASE_B")) {
-                                if (!TextUtils.equals(DragonEyeApplication.getInstance().mBaseAddressB, baseHost[1])) {
-                                    DragonEyeApplication.getInstance().mBaseAddressB = baseHost[1];
-                                    index = 1;
-                                }
+                byte[] buf = new byte[256];
+                packet = new DatagramPacket(buf, buf.length);
+
+                try {
+                    socket.setSoTimeout(2000);
+                    socket.receive(packet);
+                } catch (SocketTimeoutException e) {
+                    System.out.println("multicastThread - RX timeout");
+                    continue;
+                } catch (SocketException e) {
+                    e.printStackTrace();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+                if (packet.getLength() == 0)
+                    continue;
+
+                String msg = new String(packet.getData(), packet.getOffset(), packet.getLength());
+                System.out.println("Multicast receive : " + msg);
+
+                String baseHost[] = msg.split(":");
+                if (baseHost.length >= 2) {
+                    //System.out.println(baseHost[0]);
+                    //System.out.println(baseHost[1]);
+                    if (TextUtils.equals(baseHost[0], "BASE_A") ||
+                            TextUtils.equals(baseHost[0], "BASE_B")) { /* Base found ... */
+                        int index = -1;
+                        if (TextUtils.equals(baseHost[0], "BASE_A")) {
+                            if (!TextUtils.equals(DragonEyeApplication.getInstance().mBaseAddressA, baseHost[1])) {
+                                DragonEyeApplication.getInstance().mBaseAddressA = baseHost[1];
+                                index = 0;
                             }
-
-                            if (index >= 0) { /* Update listview required */
-                                mListAdapter.updateView(index, mListView, baseHost[1], null);
-
-                                mSystemSettingsFetched = false;
-                                String payloadString = "#SystemSettings";
-                                DragonEyeApplication.getInstance().mUdpClient.send(baseHost[1], UDP_REMOTE_PORT, payloadString);
-
-                                mCameraSettingsFetched = false;
-                                payloadString = "#CameraSettings";
-                                DragonEyeApplication.getInstance().mUdpClient.send(baseHost[1], UDP_REMOTE_PORT, payloadString);
-
-                                payloadString = "#Status";
-                                DragonEyeApplication.getInstance().mUdpClient.send(baseHost[1], UDP_REMOTE_PORT, payloadString);
+                        } else if (TextUtils.equals(baseHost[0], "BASE_B")) {
+                            if (!TextUtils.equals(DragonEyeApplication.getInstance().mBaseAddressB, baseHost[1])) {
+                                DragonEyeApplication.getInstance().mBaseAddressB = baseHost[1];
+                                index = 1;
                             }
-                        } else if (TextUtils.equals(baseHost[0], "TRIGGER_A")) {
-                            int i = Integer.parseInt(baseHost[1]);
-                            if (i != serNoA) {
-                                if (isRingTonePlaying == false) {
-                                    System.out.println("Play tone ...");
-                                    isRingTonePlaying = true;
-                                    tonePlayer.startPlay();
-                                    mTriggerBaseA = true;
-                                    mTonePlayerHandler.post(ringTonePlayerThread);
-                                    //Toast.makeText(mContext, "F3F Base Trigger", Toast.LENGTH_SHORT).show();
-                                }
-                                serNoA = i;
+                        }
+
+                        if (index >= 0) { /* Update listview required */
+                            mListAdapter.updateView(index, mListView, baseHost[1], null);
+
+                            mSystemSettingsFetched = false;
+                            String payloadString = "#SystemSettings";
+                            DragonEyeApplication.getInstance().mUdpClient.send(baseHost[1], UDP_REMOTE_PORT, payloadString);
+
+                            mCameraSettingsFetched = false;
+                            payloadString = "#CameraSettings";
+                            DragonEyeApplication.getInstance().mUdpClient.send(baseHost[1], UDP_REMOTE_PORT, payloadString);
+
+                            payloadString = "#Status";
+                            DragonEyeApplication.getInstance().mUdpClient.send(baseHost[1], UDP_REMOTE_PORT, payloadString);
+                        }
+                    } else if (TextUtils.equals(baseHost[0], "TRIGGER_A")) {
+                        int i = Integer.parseInt(baseHost[1]);
+                        if (i != serNoA) {
+                            if (isRingTonePlaying == false) {
+                                System.out.println("Play tone ...");
+                                isRingTonePlaying = true;
+                                tonePlayer.startPlay();
+                                mTriggerBaseA = true;
+                                mTonePlayerHandler.post(ringTonePlayerThread);
+                                //Toast.makeText(mContext, "F3F Base Trigger", Toast.LENGTH_SHORT).show();
                             }
-                        } else if (TextUtils.equals(baseHost[0], "TRIGGER_B")) {
-                            int i = Integer.parseInt(baseHost[1]);
-                            if (i != serNoB) {
-                                if (isRingTonePlaying == false) {
-                                    System.out.println("Play tone ...");
-                                    isRingTonePlaying = true;
-                                    tonePlayer.startPlay();
-                                    mTriggerBaseA = false;
-                                    mTonePlayerHandler.post(ringTonePlayerThread);
-                                    //Toast.makeText(mContext, "F3F Base Trigger", Toast.LENGTH_SHORT).show();
-                                }
-                                serNoB = i;
+                            serNoA = i;
+                        }
+                    } else if (TextUtils.equals(baseHost[0], "TRIGGER_B")) {
+                        int i = Integer.parseInt(baseHost[1]);
+                        if (i != serNoB) {
+                            if (isRingTonePlaying == false) {
+                                System.out.println("Play tone ...");
+                                isRingTonePlaying = true;
+                                tonePlayer.startPlay();
+                                mTriggerBaseA = false;
+                                mTonePlayerHandler.post(ringTonePlayerThread);
+                                //Toast.makeText(mContext, "F3F Base Trigger", Toast.LENGTH_SHORT).show();
                             }
+                            serNoB = i;
                         }
                     }
                 }
-            } catch(IOException e) {
-                System.out.println(e.toString());
-            } finally {
-                if(socket2 != null) {
-                    try {
-                        socket2.leaveGroup(InetAddress.getByName("224.0.0.2"));
-                        socket2.close();
-                    } catch(IOException e) {
-                        System.out.println(e.toString());
-                    }
-                }
-                if(socket3 != null) {
-                    try {
-                        socket3.leaveGroup(InetAddress.getByName("224.0.0.3"));
-                        socket3.close();
-                    } catch(IOException e) {
-                        System.out.println(e.toString());
-                    }
-                }
             }
+
+            if(socket != null) {
+                try {
+                    socket.leaveGroup(group);
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+                socket.close();
+                socket = null;
+            }
+
+            localAddr = 0;
+            networkId = -1;
+
+            System.out.println("multicastThread - Stopped ...");
+
+            lock.release();
+
+            running.set(false);
         }
-    });
+    }
 
     @RequiresApi(api = Build.VERSION_CODES.LOLLIPOP)
     @Override
@@ -592,19 +716,16 @@ public class MainActivity extends AppCompatActivity {
 
         IntentFilter udpRcvIntentFilter = new IntentFilter("udpMsg");
         registerReceiver(broadcastReceiver, udpRcvIntentFilter);
-
-        @SuppressLint("WifiManagerLeak") final WifiManager manager = (WifiManager) getSystemService(WIFI_SERVICE);
-        mMulticastLock = manager.createMulticastLock("mylock");
-        mMulticastLock.setReferenceCounted(true);
-        mMulticastLock.acquire();
-        final DhcpInfo dhcp = manager.getDhcpInfo();
+/*
+        @SuppressLint("WifiManagerLeak") final WifiManager wifiManager = (WifiManager) getApplicationContext().getSystemService(Context.WIFI_SERVICE);
+        final DhcpInfo dhcp = wifiManager.getDhcpInfo();
 
         System.out.println("IP : " + stringAddress(dhcp.ipAddress));
         System.out.println("Netmask : " + stringAddress(dhcp.netmask));
         System.out.println("Gateway : " + stringAddress(dhcp.gateway));
         System.out.println("DNS 1 : " + stringAddress(dhcp.dns1));
         System.out.println("DNS 2 : " + stringAddress(dhcp.dns2));
-
+*/
         TextView wifi_ssid = (TextView) findViewById(R.id.textview_ssid);
         mStatusView = (TextView) findViewById(R.id.textview_status);
 
@@ -612,38 +733,69 @@ public class MainActivity extends AppCompatActivity {
         mConnectionMonitor.onInternetStateListener(new ConnectionUtil.ConnectionStateListener() {
             @Override
             public void onWifiConnection(boolean connected) {
+                System.out.println("onWifiConnection ...");
+
                 isWifiConnected = connected;
                 if (connected) {
-                    WifiInfo wifiInfo = manager.getConnectionInfo();
+                    System.out.println("On Wifi Connected ...");
+                    @SuppressLint("WifiManagerLeak") final WifiManager wifiManager = (WifiManager) getApplicationContext().getSystemService(Context.WIFI_SERVICE);
+                    WifiInfo wifiInfo = wifiManager.getConnectionInfo();
                     if (wifiInfo.getSupplicantState() == SupplicantState.COMPLETED) {
                         System.out.println("Wifi SSID : " + wifiInfo.getSSID());
-                        wifi_ssid.setText(wifiInfo.getSSID());
+
+                        String ssid = wifiInfo.getSSID().replace("\"", "");
+                        if(!TextUtils.equals(wifi_ssid.getText(), ssid)) /* Connection changed */
+                            onWifiConnectionChanged();
+                        wifi_ssid.setText(ssid);
+
+                        if(mMulticastThread2.isRunning() == false)
+                            mMulticastThread2.start();
+                        if(mMulticastThread3.isRunning() == false)
+                            mMulticastThread3.start();
+                        if(DragonEyeApplication.getInstance().mUdpClient.isRunning() == false)
+                            DragonEyeApplication.getInstance().mUdpClient.start();
                     }
                 } else {
+                    System.out.println("On Wifi Disconnected ...");
                     wifi_ssid.setText("Wifi disconnected !!!");
                     mStatusView.setText("Select a Base");
-                    DragonEyeApplication.getInstance().mBaseAddress = null;
-                    DragonEyeApplication.getInstance().mBaseAddressA = null;
-                    DragonEyeApplication.getInstance().mBaseAddressB = null;
-                    mSystemSettingsFetched = false;
-                    mCameraSettingsFetched = false;
-                    mBaseStartedA = false;
-                    mBaseStartedB = false;
 
-                    //mListAdapter.updateView(0, mListView, "0.0.0.0", "Off line ...");
-                    //mListAdapter.updateView(1, mListView, "0.0.0.0", "Off line ...");
+                    onWifiConnectionChanged();
+
+                    if(DragonEyeApplication.getInstance().mUdpClient.isRunning())
+                        DragonEyeApplication.getInstance().mUdpClient.stop();
+                    if(mMulticastThread2.isRunning())
+                        mMulticastThread2.stop();
+                    if(mMulticastThread3.isRunning())
+                        mMulticastThread3.stop();
                 }
+            }
+
+            private void onWifiConnectionChanged() {
+                DragonEyeApplication.getInstance().mBaseAddress = null;
+                DragonEyeApplication.getInstance().mBaseAddressA = null;
+                DragonEyeApplication.getInstance().mBaseAddressB = null;
+                mSystemSettingsFetched = false;
+                mCameraSettingsFetched = false;
+                mBaseStartedA = false;
+                mBaseStartedB = false;
+                mListAdapter.updateView(0, mListView, "0.0.0.0", "Off line ...");
+                mListAdapter.updateView(1, mListView, "0.0.0.0", "Off line ...");
             }
         });
 
-        multicastReceiverThread.start();
+        mMulticastThread2 = new MulticastThread("224.0.0.2", 9002);
+        mMulticastThread2.start();
+
+        mMulticastThread3 = new MulticastThread("224.0.0.3", 9003);
+        mMulticastThread3.start();
     }
 
     @Override
     protected void onStart() {
         super.onStart();
 
-        WifiManager wifiManager = (WifiManager) getApplicationContext().getSystemService(WIFI_SERVICE);
+        @SuppressLint("WifiManagerLeak") final WifiManager wifiManager = (WifiManager) getApplicationContext().getSystemService(Context.WIFI_SERVICE);
         if (wifiManager.isWifiEnabled()) { // Wi-Fi adapter is ON
             WifiInfo wifiInfo = wifiManager.getConnectionInfo();
 
@@ -651,7 +803,7 @@ public class MainActivity extends AppCompatActivity {
                 if (wifiInfo.getSupplicantState() == SupplicantState.COMPLETED) {
                     System.out.println("Wifi SSID : " + wifiInfo.getSSID());
                     TextView wifi_ssid = (TextView) findViewById(R.id.textview_ssid);
-                    wifi_ssid.setText(wifiInfo.getSSID());
+                    wifi_ssid.setText(wifiInfo.getSSID().replace("\"", ""));
                 }
 
                 if(DragonEyeApplication.getInstance().mBaseAddressA == null && DragonEyeApplication.getInstance().mBaseAddressB == null)
@@ -661,6 +813,9 @@ public class MainActivity extends AppCompatActivity {
                     @Override
                     public void run() {
                         if(DragonEyeApplication.getInstance().mBaseAddress != null) {
+                            //WifiManager.MulticastLock lock = wifiManager.createMulticastLock("mylock");
+                            //lock.setReferenceCounted(true);
+                            //lock.acquire();
                             if(mSystemSettingsFetched == false) {
                                 String payloadString = "#SystemSettings";
                                 DragonEyeApplication.getInstance().mUdpClient.send(DragonEyeApplication.getInstance().mBaseAddress, UDP_REMOTE_PORT, payloadString);
@@ -670,21 +825,17 @@ public class MainActivity extends AppCompatActivity {
                                 String payloadString = "#CameraSettings";
                                 DragonEyeApplication.getInstance().mUdpClient.send(DragonEyeApplication.getInstance().mBaseAddress, UDP_REMOTE_PORT, payloadString);
                             }
+                            //lock.release();
                         }
                     }
                 });
                 thread.start();
-
             }
         }
     }
 
     @Override
     protected void onDestroy() {
-        if(mMulticastLock != null) {
-            mMulticastLock.release();
-            mMulticastLock = null;
-        }
         unregisterReceiver(broadcastReceiver);
         super.onDestroy();
     }
