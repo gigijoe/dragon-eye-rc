@@ -102,10 +102,6 @@ public class SystemSettingsActivity extends AppCompatActivity {
 
                 udpPayload.append("\n");
 
-                udpPayload.append("base.udp.remote.host=" + DragonEyeApplication.getInstance().mBaseAddress);
-                udpPayload.append("\n");
-                udpPayload.append("base.udp.remote.port=" + UDP_REMOTE_PORT);
-                udpPayload.append("\n");
                 udpPayload.append("base.rtp.remote.host=" + DragonEyeApplication.getInstance().mBaseAddress);
                 udpPayload.append("\n");
                 udpPayload.append("base.rtp.remote.port=" + RTP_REMOTE_PORT);
