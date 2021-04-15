@@ -102,11 +102,6 @@ public class SystemSettingsActivity extends AppCompatActivity {
 
                 udpPayload.append("\n");
 
-                udpPayload.append("base.hwswitch=no\n");
-
-                //@SuppressLint("WifiManagerLeak") final WifiManager manager = (WifiManager) getSystemService(WIFI_SERVICE);
-                //final DhcpInfo dhcp = manager.getDhcpInfo();
-
                 udpPayload.append("base.udp.remote.host=" + DragonEyeApplication.getInstance().mBaseAddress);
                 udpPayload.append("\n");
                 udpPayload.append("base.udp.remote.port=" + UDP_REMOTE_PORT);
