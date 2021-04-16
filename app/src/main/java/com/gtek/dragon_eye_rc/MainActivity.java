@@ -78,8 +78,7 @@ public class MainActivity extends AppCompatActivity {
     private Context mContext;
     private Activity mActivity;
 
-    private static int serNo = 0;
-    private static int serNoA = 0, serNoB = 0;
+    private static int serNoA = -1, serNoB = -1;
 
     private HandlerThread mHandlerThread;
     private Handler mTonePlayerHandler;
