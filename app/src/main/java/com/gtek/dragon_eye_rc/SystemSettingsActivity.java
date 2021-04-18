@@ -20,9 +20,9 @@ import androidx.preference.PreferenceManager;
 
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 
-public class SystemSettingsActivity extends AppCompatActivity {
+import static com.gtek.dragon_eye_rc.DragonEyeBase.UDP_REMOTE_PORT;
 
-    private static final int UDP_REMOTE_PORT = 4999;
+public class SystemSettingsActivity extends AppCompatActivity {
     private static final int RTP_REMOTE_PORT = 5000;
     private Context mContext;
 
@@ -76,6 +76,68 @@ public class SystemSettingsActivity extends AppCompatActivity {
 
         mContext = getApplicationContext();
 
+        DragonEyeBase b = DragonEyeApplication.getInstance().getSelectedBase();
+        if(b != null) {
+            String s = b.getSystemSettings();
+            if (s.startsWith("#SystemSettings")) {
+                SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(mContext);
+                SharedPreferences.Editor editor = sp.edit();
+                editor.putString("video_output", "off");
+
+                String lines[] = s.split("\\r?\\n");
+                for (int i = 0; i < lines.length; i++) {
+                    if (lines[i].length() > 0) {
+                        if (lines[i].startsWith("#"))
+                            continue;
+                    }
+                    //System.out.println(i + " " + lines[i]);
+                    String keyValue[] = lines[i].split("=");
+                    if (keyValue.length == 2) {
+
+                        System.out.println("[ " + keyValue[0] + " ] = " + keyValue[1]);
+
+                        if (TextUtils.equals(keyValue[0], "base.type")) {
+                            if (TextUtils.equals(keyValue[1], "A")) {
+                                editor.putString("base_type", "base_a");
+                            } else if (TextUtils.equals(keyValue[1], "B")) {
+                                editor.putString("base_type", "base_b");
+                            }
+                        } else if (TextUtils.equals(keyValue[0], "base.mog2.threshold")) {
+                            editor.putInt("mog2_threshold", Integer.parseInt(keyValue[1]));
+                        } else if (TextUtils.equals(keyValue[0], "base.new.target.restriction")) {
+                            if (TextUtils.equals(keyValue[1], "yes"))
+                                editor.putBoolean("new_target_restriction", true);
+                            else
+                                editor.putBoolean("new_target_restriction", false);
+                        } else if (TextUtils.equals(keyValue[0], "video.output.screen")) {
+                            if (TextUtils.equals(keyValue[1], "yes"))
+                                editor.putString("video_output", "screen");
+                        } else if (TextUtils.equals(keyValue[0], "video.output.file")) {
+                            if (TextUtils.equals(keyValue[1], "yes"))
+                                editor.putBoolean("save_file", true);
+                            else
+                                editor.putBoolean("save_file", false);
+                        } else if (TextUtils.equals(keyValue[0], "video.output.rtp")) {
+                            if (TextUtils.equals(keyValue[1], "yes"))
+                                editor.putString("video_output", "rtp");
+                        } else if (TextUtils.equals(keyValue[0], "video.output.hls")) {
+                            if (TextUtils.equals(keyValue[1], "yes"))
+                                editor.putString("video_output", "hls");
+                        } else if (TextUtils.equals(keyValue[0], "video.output.rtsp")) {
+                            if (TextUtils.equals(keyValue[1], "yes"))
+                                editor.putString("video_output", "rtsp");
+                        } else if (TextUtils.equals(keyValue[0], "video.output.result")) {
+                            if (TextUtils.equals(keyValue[1], "yes"))
+                                editor.putBoolean("show_result", true);
+                            else
+                                editor.putBoolean("show_result", false);
+                        }
+                    }
+                }
+                editor.commit();
+            }
+        }
+
         FloatingActionButton fab = findViewById(R.id.system_settings_apply);
         fab.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -90,7 +152,7 @@ public class SystemSettingsActivity extends AppCompatActivity {
 
                 //SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(SystemSettingsActivity.this);
                 //SharedPreferences sp = getSharedPreferences("SystemSettings", MODE_PRIVATE);
-                SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(getApplicationContext());
+                SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(mContext);
 
                 String s = sp.getString("base_type", "");
                 switch(s) {
@@ -102,7 +164,7 @@ public class SystemSettingsActivity extends AppCompatActivity {
 
                 udpPayload.append("\n");
 
-                udpPayload.append("base.rtp.remote.host=" + DragonEyeApplication.getInstance().mBaseAddress);
+                udpPayload.append("base.rtp.remote.host=" + DragonEyeApplication.getInstance().getSelectedBase().getAddress());
                 udpPayload.append("\n");
                 udpPayload.append("base.rtp.remote.port=" + RTP_REMOTE_PORT);
                 udpPayload.append("\n");
@@ -184,7 +246,8 @@ public class SystemSettingsActivity extends AppCompatActivity {
                             //@SuppressLint("WifiManagerLeak") final WifiManager manager = (WifiManager) getSystemService(WIFI_SERVICE);
                             //final DhcpInfo dhcp = manager.getDhcpInfo();
 
-                            DragonEyeApplication.getInstance().mUdpClient.send(DragonEyeApplication.getInstance().mBaseAddress, UDP_REMOTE_PORT, udpPayload.toString());
+                            //DragonEyeApplication.getInstance().mUdpClient.send(DragonEyeApplication.getInstance().mBaseAddress, UDP_REMOTE_PORT, udpPayload.toString());
+                            DragonEyeApplication.getInstance().mUdpClient.send(DragonEyeApplication.getInstance().getSelectedBase().getAddress(), DragonEyeBase.UDP_REMOTE_PORT, udpPayload.toString());
                             //DragonEyeApplication.getInstance().mUdpClient.send("192.168.168.76", UDP_REMOTE_PORT, udpPayload.toString());
                         }
                     }

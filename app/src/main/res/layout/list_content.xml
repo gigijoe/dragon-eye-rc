@@ -1,23 +1,26 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:layout_alignParentEnd="true"
+    android:gravity="center_vertical"
     android:orientation="horizontal"
     android:paddingTop="16dp"
-    android:paddingBottom="16dp"
-    android:gravity="center_vertical">
+    android:paddingBottom="16dp">
 
     <TextView
         android:id="@+id/iv_name"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:paddingLeft="32dp"
-        android:paddingRight="32dp"
+        android:paddingLeft="8dp"
+        android:paddingRight="16dp"
         android:textSize="36sp" />
 
     <LinearLayout
-        android:layout_width="match_parent"
+        android:layout_width="wrap_content"
         android:layout_height="wrap_content"
+        android:layout_weight="2"
         android:orientation="vertical">
 
         <TextView
@@ -31,6 +34,39 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:textSize="24sp" />
-
     </LinearLayout>
+
+    <ImageView
+        android:id="@+id/iv_system_settings"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:background="@drawable/selector"
+        android:clickable="true"
+        android:contentDescription="@string/system_settings"
+        android:focusable="true"
+        android:padding="4dp"
+        android:src="@drawable/ic_baseline_settings_24" />
+
+    <ImageView
+        android:id="@+id/iv_camera_settings"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:background="@drawable/selector"
+        android:clickable="true"
+        android:contentDescription="@string/camera_settings"
+        android:focusable="true"
+        android:padding="4dp"
+        android:src="@drawable/ic_baseline_camera_24" />
+
+    <ImageView
+        android:id="@+id/iv_rtsp_video"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:background="@drawable/selector"
+        android:clickable="true"
+        android:contentDescription="@string/rtsp_video"
+        android:focusable="true"
+        android:padding="4dp"
+        android:src="@drawable/ic_baseline_video_camera_back_24" />
+
 </LinearLayout>

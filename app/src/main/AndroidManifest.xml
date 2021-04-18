@@ -26,11 +26,11 @@
             android:screenOrientation="portrait" />
         <activity
             android:name="com.gtek.dragon_eye_rc.CameraSettingsActivity"
-            android:label="@string/title_activity_camera_settings"
+            android:label="@string/camera_settings"
             android:screenOrientation="portrait" />
         <activity
             android:name="com.gtek.dragon_eye_rc.SystemSettingsActivity"
-            android:label="@string/title_activity_system_settings"
+            android:label="@string/system_settings"
             android:screenOrientation="portrait" />
         <activity android:name="com.gtek.dragon_eye_rc.MainActivity">
             <intent-filter>

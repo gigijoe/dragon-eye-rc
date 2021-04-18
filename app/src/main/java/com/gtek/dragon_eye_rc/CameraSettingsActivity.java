@@ -21,8 +21,6 @@ import androidx.preference.PreferenceManager;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 
 public class CameraSettingsActivity extends AppCompatActivity {
-
-    private static final int UDP_REMOTE_PORT = 4999;
     private Context mContext;
 
     private final Handler mHandler = new Handler(Looper.getMainLooper()) {
@@ -74,6 +72,54 @@ public class CameraSettingsActivity extends AppCompatActivity {
 
         mContext = getApplicationContext();
 
+        DragonEyeBase b = DragonEyeApplication.getInstance().getSelectedBase();
+        if(b != null) {
+            String s = b.getCameraSettings();
+            if (s.startsWith("#CameraSettings")) {
+                SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(getApplicationContext());
+                SharedPreferences.Editor editor = sp.edit();
+
+                String lines[] = s.split("\\r?\\n");
+                for (int i = 0; i < lines.length; i++) {
+                    if (lines[i].length() > 0) {
+                        if (lines[i].startsWith("#"))
+                            continue;
+                    }
+                    //System.out.println(i + " " + lines[i]);
+                    String keyValue[] = lines[i].split("=");
+                    if (keyValue.length == 2) {
+
+                        System.out.println("[ " + keyValue[0] + " ] = " + keyValue[1]);
+
+                        if (TextUtils.equals(keyValue[0], "sensor-id")) {
+                            if (Integer.parseInt(keyValue[1]) == 0)
+                                editor.putString("camera_id", "camera_1");
+                            if (Integer.parseInt(keyValue[1]) == 1)
+                                editor.putString("camera_id", "camera_2");
+                        } else if (TextUtils.equals(keyValue[0], "wbmode")) {
+                            editor.putString("wbmode", keyValue[1]);
+                        } else if (TextUtils.equals(keyValue[0], "tnr-mode")) {
+                            editor.putString("tnr_mode", keyValue[1]);
+                        } else if (TextUtils.equals(keyValue[0], "tnr-strength")) {
+                            //editor.putInt("tnr_strength", Integer.parseInt(keyValue[1]) * 100);
+                            editor.putInt("tnr_strength", Math.round(Float.parseFloat(keyValue[1]) * 10));
+                        } else if (TextUtils.equals(keyValue[0], "ee-mode")) {
+                            editor.putString("ee_mode", keyValue[1]);
+                        } else if (TextUtils.equals(keyValue[0], "ee-strength")) {
+                            //editor.putInt("ee_strength", Integer.parseInt(keyValue[1]) * 100);
+                            editor.putInt("ee_strength", Math.round(Float.parseFloat(keyValue[1]) * 10));
+                        } else if (TextUtils.equals(keyValue[0], "exposurecompensation")) {
+                            //editor.putInt("exposure_compensation", Integer.parseInt(keyValue[1]) * 200);
+                            editor.putInt("exposure_compensation", Math.round(Float.parseFloat(keyValue[1]) * 20));
+                        } else if (TextUtils.equals(keyValue[0], "exposurethreshold")) {
+                            editor.putInt("exposure_threshold", Integer.parseInt(keyValue[1]));
+                        }
+                    }
+                }
+                editor.commit();
+            }
+        }
+
         FloatingActionButton fab = findViewById(R.id.camera_settings_apply);
         fab.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -88,7 +134,7 @@ public class CameraSettingsActivity extends AppCompatActivity {
 
                 //SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(CameraSettingsActivity.this);
                 //SharedPreferences sp = getSharedPreferences("CameraSettings", MODE_PRIVATE);
-                SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(getApplicationContext());
+                SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(mContext);
 
                 String s = sp.getString("camera_id", "");
                 switch(s) {
@@ -152,7 +198,8 @@ public class CameraSettingsActivity extends AppCompatActivity {
                             //@SuppressLint("WifiManagerLeak") final WifiManager manager = (WifiManager) getSystemService(WIFI_SERVICE);
                             //final DhcpInfo dhcp = manager.getDhcpInfo();
 
-                            DragonEyeApplication.getInstance().mUdpClient.send(DragonEyeApplication.getInstance().mBaseAddress, UDP_REMOTE_PORT, udpPayload.toString());
+                            //DragonEyeApplication.getInstance().mUdpClient.send(DragonEyeApplication.getInstance().mBaseAddress, UDP_REMOTE_PORT, udpPayload.toString());
+                            DragonEyeApplication.getInstance().mUdpClient.send(DragonEyeApplication.getInstance().getSelectedBase().getAddress(), DragonEyeBase.UDP_REMOTE_PORT, udpPayload.toString());
                             //DragonEyeApplication.getInstance().mUdpClient.send("192.168.168.76", UDP_REMOTE_PORT, udpPayload.toString());
                         }
                     }

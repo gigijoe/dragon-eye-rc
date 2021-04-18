@@ -11,8 +11,10 @@ import android.net.NetworkInfo;
 import android.net.NetworkRequest;
 import android.net.wifi.WifiInfo;
 import android.net.wifi.WifiManager;
+import android.text.TextUtils;
 import android.util.Log;
 
+import java.util.ArrayList;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -24,9 +26,60 @@ public class DragonEyeApplication extends Application {
     }
 
     public UDPClient mUdpClient = null;
-    public String mBaseAddress = null;
-    public String mBaseAddressA = null;
-    public String mBaseAddressB = null;
+    public int mSelectedBaseIndex = -1;
+
+    //public String mBaseAddress = null;
+    //public String mBaseAddressA = null;
+    //public String mBaseAddressB = null;
+
+    public ArrayList<DragonEyeBase> mBaseList = new ArrayList<>();
+
+    public DragonEyeBase findBaseByAddress(String addr) {
+        for(DragonEyeBase b : mBaseList) {
+            if(TextUtils.equals(b.getAddress(), addr))
+                return b;
+        }
+        return null;
+    }
+
+    public void addBase(DragonEyeBase b) {
+        mBaseList.add(b);
+    }
+
+    public void selectBaseByIndex(int index) {
+        if(mBaseList.get(index) != null)
+            mSelectedBaseIndex = index;
+    }
+
+    public DragonEyeBase getSelectedBase() {
+        if(mSelectedBaseIndex == -1)
+            return null;
+        return mBaseList.get(mSelectedBaseIndex);
+    }
+
+    public void requestSystemSettings(DragonEyeBase b) {
+        final String payloadString = "#SystemSettings";
+        mUdpClient.send(b.getAddress(), DragonEyeBase.UDP_REMOTE_PORT, payloadString);
+    }
+
+    public void requestCameraSettings(DragonEyeBase b) {
+        final String payloadString = "#CameraSettings";
+        mUdpClient.send(b.getAddress(), DragonEyeBase.UDP_REMOTE_PORT, payloadString);
+    }
+
+    public void requestStatus(DragonEyeBase b) {
+        final String payloadString = "#Status";
+        mUdpClient.send(b.getAddress(), DragonEyeBase.UDP_REMOTE_PORT, payloadString);
+    }
+
+    public void requestStart(DragonEyeBase b) {
+        final String payloadString = "#Start";
+        mUdpClient.send(b.getAddress(), DragonEyeBase.UDP_REMOTE_PORT, payloadString);
+    }
+    public void requestStop(DragonEyeBase b) {
+        final String payloadString = "#Stop";
+        mUdpClient.send(b.getAddress(), DragonEyeBase.UDP_REMOTE_PORT, payloadString);
+    }
 
     @Override
     public void onCreate() {
@@ -59,11 +112,4 @@ public class DragonEyeApplication extends Application {
         mUdpClient.stop();
         super.onTerminate();
     }
-/*
-    public void StartUdpClient() {
-        ExecutorService exec = Executors.newCachedThreadPool();
-        if(mUdpClient.isRunning() == false)
-            exec.execute(mUdpClient);
-    }
- */
 }
