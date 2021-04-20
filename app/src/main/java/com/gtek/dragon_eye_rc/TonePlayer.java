@@ -8,6 +8,8 @@ import android.media.AudioTrack;
 import android.os.Build;
 
 import java.io.InputStream;
+import java.util.LinkedList;
+import java.util.Queue;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 public class TonePlayer implements Runnable {

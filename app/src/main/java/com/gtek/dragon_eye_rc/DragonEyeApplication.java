@@ -19,6 +19,8 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicBoolean;
 
+import static java.lang.Thread.sleep;
+
 public class DragonEyeApplication extends Application {
     private static DragonEyeApplication mInstance;
 
@@ -31,10 +33,12 @@ public class DragonEyeApplication extends Application {
 
     public TonePlayer mTonePlayer = null;
     private final AtomicBoolean isPriorityPlaying = new AtomicBoolean(false);
+    ArrayList<Integer> toneArray;
 
     public void playTone(int resourceId) {
-        if(isPriorityPlaying.get())
+        if(mTonePlayer.isPlaying() && isPriorityPlaying.get())
             return;
+
         if(mTonePlayer.isPlaying())
             mTonePlayer.stopPlay();
 
@@ -46,8 +50,11 @@ public class DragonEyeApplication extends Application {
     }
 
     public void playPriorityTone(int resourceId) {
-        if(mTonePlayer.isPlaying())
+        if(mTonePlayer.isPlaying()) {
+            if(toneArray != null)
+                toneArray.clear();
             mTonePlayer.stopPlay();
+        }
 
         isPriorityPlaying.set(true);
 
@@ -56,9 +63,36 @@ public class DragonEyeApplication extends Application {
         t.start();
     }
 
+    public void playTone(ArrayList<Integer> a) {
+        toneArray = a;
+        Thread thread = new Thread(new Runnable() {
+            @Override
+            public void run() {
+                for(int tone : a) {
+                    mTonePlayer.startPlay(tone);
+                    Thread t = new Thread(mTonePlayer);
+                    t.start();
+
+                    while(mTonePlayer.isPlaying()) {
+                        try {
+                            Thread.sleep(10);
+                        } catch (InterruptedException e) {
+                            e.printStackTrace();
+                        }
+                    }
+                }
+                toneArray = null;
+            }
+        });
+        thread.start();
+    }
+
     public void stopTone() {
-        if(mTonePlayer.isPlaying())
+        if(mTonePlayer.isPlaying()) {
+            if(toneArray != null)
+                toneArray.clear();
             mTonePlayer.stopPlay();
+        }
         isPriorityPlaying.set(false);
     }
 

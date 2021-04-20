@@ -97,6 +97,8 @@ public class MainActivity extends AppCompatActivity {
     public MulticastThread mMulticastThread2 = null;
     public MulticastThread mMulticastThread3 = null;
 
+    private boolean isPaused = false;
+
     private final Handler mHandler = new Handler(Looper.getMainLooper()) {
         @Override
         public void handleMessage(Message msg) {
@@ -464,16 +466,20 @@ public class MainActivity extends AppCompatActivity {
                     } else if (TextUtils.equals(baseHost[0], "TRIGGER_A")) {
                         int i = Integer.parseInt(baseHost[1]);
                         if (i != serNoA) {
-                            System.out.println("Play tone ...");
-                            DragonEyeApplication.getInstance().playTone(R.raw.r_a);
-                            serNoA = i;
+                            if(!isPaused) {
+                                System.out.println("Play tone ...");
+                                DragonEyeApplication.getInstance().playTone(R.raw.r_a);
+                                serNoA = i;
+                            }
                         }
                     } else if (TextUtils.equals(baseHost[0], "TRIGGER_B")) {
                         int i = Integer.parseInt(baseHost[1]);
                         if (i != serNoB) {
-                            System.out.println("Play tone ...");
-                            DragonEyeApplication.getInstance().playTone(R.raw.r_b);
-                            serNoB = i;
+                            if(!isPaused) {
+                                System.out.println("Play tone ...");
+                                DragonEyeApplication.getInstance().playTone(R.raw.r_b);
+                                serNoB = i;
+                            }
                         }
                     }
                 }
@@ -645,6 +651,8 @@ public class MainActivity extends AppCompatActivity {
     protected void onStart() {
         super.onStart();
 
+        isPaused = false;
+
         @SuppressLint("WifiManagerLeak") final WifiManager wifiManager = (WifiManager) getApplicationContext().getSystemService(Context.WIFI_SERVICE);
         if (wifiManager.isWifiEnabled()) { // Wi-Fi adapter is ON
             WifiInfo wifiInfo = wifiManager.getConnectionInfo();
@@ -667,6 +675,13 @@ public class MainActivity extends AppCompatActivity {
                 }
             }
         }
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+
+        isPaused = true;
     }
 
     @Override
