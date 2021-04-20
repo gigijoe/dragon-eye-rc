@@ -199,25 +199,18 @@ public class MainActivity extends AppCompatActivity {
             switch (v.getId())
             {
                 case R.id.iv_system_settings: System.out.println("iv_system_settings OnClick...");
-                    //if(DragonEyeApplication.getInstance().getSelectedBase() == null)
-                    //    break;
                     if(b.getSystemSettings() == null)
                         break;
                     Intent intent = new Intent(getApplicationContext(), SystemSettingsActivity.class);
                     startActivity(intent);
                     break;
                 case R.id.iv_camera_settings: System.out.println("iv_camera_settings OnClick...");
-                    //if(DragonEyeApplication.getInstance().getSelectedBase() == null)
-                    //    break;
                     if(b.getCameraSettings() == null)
                         break;
                     intent = new Intent(getApplicationContext(), CameraSettingsActivity.class);
                     startActivity(intent);
                     break;
                 case R.id.iv_rtsp_video: System.out.println("iv_rtsp_video OnClick...");
-                    //DragonEyeBase b = DragonEyeApplication.getInstance().getSelectedBase();
-                    //if(b == null)
-                    //    break;
                     if(b.getStatus() != DragonEyeBase.Status.STARTED)
                         break;
                     intent = new Intent(getApplicationContext(), VideoActivity.class);
@@ -730,29 +723,8 @@ public class MainActivity extends AppCompatActivity {
     @Override
     public boolean onOptionsItemSelected(@NonNull MenuItem item) {
         switch(item.getItemId()) {
-            case R.id.item_rtsp_video:
-                DragonEyeBase b = DragonEyeApplication.getInstance().getSelectedBase();
-                if(b == null)
-                    break;
-                Intent intent = new Intent(getApplicationContext(), VideoActivity.class);
-                //intent.putExtra(VideoActivity.RTSP_URL, "RTSP://172.16.0.1:8554/test");
-                intent.putExtra(VideoActivity.RTSP_URL, "RTSP://" + b.getAddress() + ":8554/test");
-                startActivity(intent);
-                break;
-            case R.id.item_system_setup:
-                if(DragonEyeApplication.getInstance().getSelectedBase() == null)
-                    break;
-                intent = new Intent(getApplicationContext(), SystemSettingsActivity.class);
-                startActivity(intent);
-                break;
-            case R.id.item_camera_setup:
-                if(DragonEyeApplication.getInstance().getSelectedBase() == null)
-                    break;
-                intent = new Intent(getApplicationContext(), CameraSettingsActivity.class);
-                startActivity(intent);
-                break;
             case R.id.item_f3f_timer:
-                intent = new Intent(getApplicationContext(), TimerActivity.class);
+                Intent intent = new Intent(getApplicationContext(), TimerActivity.class);
                 startActivity(intent);
                 break;
         }

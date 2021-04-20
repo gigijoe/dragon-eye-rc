@@ -2,15 +2,6 @@
 <menu xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto">
     <item
-        android:id="@+id/item_rtsp_video"
-        android:title="RTSP Video" />
-    <item
-        android:id="@+id/item_system_setup"
-        android:title="@string/system_settings" />
-    <item
-        android:id="@+id/item_camera_setup"
-        android:title="@string/camera_settings" />
-    <item
         android:id="@+id/item_f3f_timer"
         android:title="@string/f3f_timer" />
 </menu>

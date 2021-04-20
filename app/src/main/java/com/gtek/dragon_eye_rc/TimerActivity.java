@@ -169,7 +169,7 @@ public class TimerActivity extends AppCompatActivity {
     private void onBaseB() {
         if(mTimerState == speedCourseState) {
             if(mCourseCount < 10) {
-                if(mCourseCount % 2 == 1)
+                if(mCourseCount < 0 || mCourseCount % 2 == 1)
                     return;
                 mCourseCount++;
                 if(mCourseCount < 9)
