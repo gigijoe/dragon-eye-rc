@@ -5,4 +5,11 @@
     <string name="system_settings">System Settings</string>
     <string name="camera_settings">Camera Settings</string>
     <string name="rtsp_video">RTSP Video</string>
+    <string name="f3f_timer">F3F Timer</string>
+
+    <!--
+    This string is used for square devices and overridden by hello_world in
+    values-round/strings.xml for round devices.
+    -->
+    <string name="hello_world">Hello Square World!</string>
 </resources>

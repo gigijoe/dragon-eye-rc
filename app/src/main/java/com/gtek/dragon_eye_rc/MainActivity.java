@@ -86,14 +86,8 @@ public class MainActivity extends AppCompatActivity {
     private Activity mActivity;
 
     private static int serNoA = -1, serNoB = -1;
-
-    private HandlerThread mHandlerThread;
-    private Handler mTonePlayerHandler;
-    private TonePlayer tonePlayer;
-    public boolean isRingTonePlaying = false;
+    
     public boolean isWifiConnected = false;
-
-    public boolean mTriggerBaseA = true;
 
     public ListView mListView;
     public ListViewAdapter mListViewAdapter;
@@ -428,6 +422,12 @@ public class MainActivity extends AppCompatActivity {
                     socket.receive(packet);
                 } catch (SocketTimeoutException e) {
                     System.out.println("multicastThread - RX timeout");
+
+                    Intent intent = new Intent();
+                    intent.setAction("mcastMsg");
+                    intent.putExtra("mcastPollTimeout", 0);
+                    mContext.sendBroadcast(intent);
+
                     continue;
                 } catch (SocketException e) {
                     e.printStackTrace();
@@ -439,6 +439,11 @@ public class MainActivity extends AppCompatActivity {
 
                 String msg = new String(packet.getData(), packet.getOffset(), packet.getLength());
                 System.out.println("Multicast receive : " + msg);
+
+                Intent intent = new Intent();
+                intent.setAction("mcastMsg");
+                intent.putExtra("mcastRcvMsg", msg);
+                mContext.sendBroadcast(intent);
 
                 String baseHost[] = msg.split(":");
                 if (baseHost.length >= 2) {
@@ -459,27 +464,15 @@ public class MainActivity extends AppCompatActivity {
                     } else if (TextUtils.equals(baseHost[0], "TRIGGER_A")) {
                         int i = Integer.parseInt(baseHost[1]);
                         if (i != serNoA) {
-                            if (isRingTonePlaying == false) {
-                                System.out.println("Play tone ...");
-                                isRingTonePlaying = true;
-                                tonePlayer.startPlay();
-                                mTriggerBaseA = true;
-                                mTonePlayerHandler.post(ringTonePlayerThread);
-                                //Toast.makeText(mContext, "F3F Base Trigger", Toast.LENGTH_SHORT).show();
-                            }
+                            System.out.println("Play tone ...");
+                            DragonEyeApplication.getInstance().playTone(R.raw.r_a);
                             serNoA = i;
                         }
                     } else if (TextUtils.equals(baseHost[0], "TRIGGER_B")) {
                         int i = Integer.parseInt(baseHost[1]);
                         if (i != serNoB) {
-                            if (isRingTonePlaying == false) {
-                                System.out.println("Play tone ...");
-                                isRingTonePlaying = true;
-                                tonePlayer.startPlay();
-                                mTriggerBaseA = false;
-                                mTonePlayerHandler.post(ringTonePlayerThread);
-                                //Toast.makeText(mContext, "F3F Base Trigger", Toast.LENGTH_SHORT).show();
-                            }
+                            System.out.println("Play tone ...");
+                            DragonEyeApplication.getInstance().playTone(R.raw.r_b);
                             serNoB = i;
                         }
                     }
@@ -519,15 +512,10 @@ public class MainActivity extends AppCompatActivity {
         Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
 
-        mHandlerThread = new HandlerThread("ringing_ht");
-        mHandlerThread.start();
-        mTonePlayerHandler = new Handler(mHandlerThread.getLooper());
-        tonePlayer = new TonePlayer();
+        DragonEyeApplication.getInstance().mTonePlayer = new TonePlayer(mContext);
 
         mListView = (ListView) findViewById(R.id.lv);
-        //mListAdapter = new lvAdapter();
         mListViewAdapter = new ListViewAdapter(DragonEyeApplication.getInstance().mBaseList, getApplicationContext());
-        //mListView.setAdapter(mListAdapter);
         mListView.setAdapter(mListViewAdapter);
         mListView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
             @Override
@@ -711,35 +699,10 @@ public class MainActivity extends AppCompatActivity {
         }
     };
 
-    final Runnable ringTonePlayerThread = new Runnable() {
-        @Override
-        public void run() {
-            byte[] buffer = new byte[160];
-            InputStream is;
-            if(mTriggerBaseA)
-                is = getResources().openRawResource(R.raw.r_a);
-            else
-                is = getResources().openRawResource(R.raw.r_b);
-
-            try {
-                while (is.read(buffer) != -1) {
-                    tonePlayer.play(buffer);
-                    if(!isRingTonePlaying)
-                        break;
-                }
-                isRingTonePlaying = false;
-                System.out.println("Finish tone ...");
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
-        }
-    };
-
     @Override
     protected void onStop() {
         //System.out.println("R.onStop");
-        isRingTonePlaying = false;
-        tonePlayer.stopPlay();
+        DragonEyeApplication.getInstance().mTonePlayer.stopPlay();
         super.onStop();
     }
 
@@ -771,6 +734,10 @@ public class MainActivity extends AppCompatActivity {
                 if(DragonEyeApplication.getInstance().getSelectedBase() == null)
                     break;
                 intent = new Intent(getApplicationContext(), CameraSettingsActivity.class);
+                startActivity(intent);
+                break;
+            case R.id.item_f3f_timer:
+                intent = new Intent(getApplicationContext(), TimerActivity.class);
                 startActivity(intent);
                 break;
         }

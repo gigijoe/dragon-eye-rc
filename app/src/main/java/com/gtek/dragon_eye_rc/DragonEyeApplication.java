@@ -17,6 +17,7 @@ import android.util.Log;
 import java.util.ArrayList;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 public class DragonEyeApplication extends Application {
     private static DragonEyeApplication mInstance;
@@ -28,9 +29,38 @@ public class DragonEyeApplication extends Application {
     public UDPClient mUdpClient = null;
     public int mSelectedBaseIndex = -1;
 
-    //public String mBaseAddress = null;
-    //public String mBaseAddressA = null;
-    //public String mBaseAddressB = null;
+    public TonePlayer mTonePlayer = null;
+    private final AtomicBoolean isPriorityPlaying = new AtomicBoolean(false);
+
+    public void playTone(int resourceId) {
+        if(isPriorityPlaying.get())
+            return;
+        if(mTonePlayer.isPlaying())
+            mTonePlayer.stopPlay();
+
+        isPriorityPlaying.set(false);
+
+        mTonePlayer.startPlay(resourceId);
+        Thread t = new Thread(mTonePlayer);
+        t.start();
+    }
+
+    public void playPriorityTone(int resourceId) {
+        if(mTonePlayer.isPlaying())
+            mTonePlayer.stopPlay();
+
+        isPriorityPlaying.set(true);
+
+        mTonePlayer.startPlay(resourceId);
+        Thread t = new Thread(mTonePlayer);
+        t.start();
+    }
+
+    public void stopTone() {
+        if(mTonePlayer.isPlaying())
+            mTonePlayer.stopPlay();
+        isPriorityPlaying.set(false);
+    }
 
     public ArrayList<DragonEyeBase> mBaseList = new ArrayList<>();
 
@@ -104,12 +134,15 @@ public class DragonEyeApplication extends Application {
 
         mUdpClient = new UDPClient(getApplicationContext());
         mUdpClient.start();
+
+        mTonePlayer = new TonePlayer(getApplicationContext());
     }
 
     @Override
     public void onTerminate() {
         Log.i("DragonEyeApplication", "onTerminate");
         mUdpClient.stop();
+        mTonePlayer.stopPlay();
         super.onTerminate();
     }
 }

@@ -3,8 +3,10 @@
     xmlns:tools="http://schemas.android.com/tools"
     package="com.gtek.dragon_eye_rc">
 
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
+
     <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
-    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"/>
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
@@ -14,25 +16,33 @@
     <uses-permission android:name="android.permission.CHANGE_NETWORK_STATE" />
 
     <application
-        android:name="com.gtek.dragon_eye_rc.DragonEyeApplication"
+        android:name=".DragonEyeApplication"
         android:allowBackup="true"
         android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/Theme.DragonEye">
+        <!--
+               Set to true if your app is Standalone, that is, it does not require the handheld
+               app to run.
+        -->
         <activity
-            android:name="com.gtek.dragon_eye_rc.VideoActivity"
+            android:name=".VideoActivity"
             android:screenOrientation="portrait" />
         <activity
-            android:name="com.gtek.dragon_eye_rc.CameraSettingsActivity"
+            android:name=".CameraSettingsActivity"
             android:label="@string/camera_settings"
             android:screenOrientation="portrait" />
         <activity
-            android:name="com.gtek.dragon_eye_rc.SystemSettingsActivity"
+            android:name=".SystemSettingsActivity"
             android:label="@string/system_settings"
             android:screenOrientation="portrait" />
-        <activity android:name="com.gtek.dragon_eye_rc.MainActivity">
+        <activity
+            android:name=".TimerActivity"
+            android:label="@string/f3f_timer"
+            android:screenOrientation="portrait" />
+        <activity android:name=".MainActivity">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 

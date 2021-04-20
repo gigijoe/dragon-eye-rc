@@ -10,4 +10,7 @@
     <item
         android:id="@+id/item_camera_setup"
         android:title="@string/camera_settings" />
+    <item
+        android:id="@+id/item_f3f_timer"
+        android:title="@string/f3f_timer" />
 </menu>
