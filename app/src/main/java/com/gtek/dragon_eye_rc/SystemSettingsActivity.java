@@ -2,6 +2,7 @@ package com.gtek.dragon_eye_rc;
 
 import android.content.BroadcastReceiver;
 import android.content.Context;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.SharedPreferences;
@@ -14,6 +15,7 @@ import android.view.View;
 import android.widget.Toast;
 
 import androidx.appcompat.app.ActionBar;
+import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.preference.PreferenceFragmentCompat;
 import androidx.preference.PreferenceManager;
@@ -243,12 +245,11 @@ public class SystemSettingsActivity extends AppCompatActivity {
                     @Override
                     public void run() {
                         if (!TextUtils.isEmpty(udpPayload.toString())){
-                            //@SuppressLint("WifiManagerLeak") final WifiManager manager = (WifiManager) getSystemService(WIFI_SERVICE);
-                            //final DhcpInfo dhcp = manager.getDhcpInfo();
+                            DragonEyeBase b = DragonEyeApplication.getInstance().getSelectedBase();
+                            DragonEyeApplication.getInstance().mUdpClient.send(b.getAddress(), DragonEyeBase.UDP_REMOTE_PORT, udpPayload.toString());
+                            b.startResponseTimer();
 
-                            //DragonEyeApplication.getInstance().mUdpClient.send(DragonEyeApplication.getInstance().mBaseAddress, UDP_REMOTE_PORT, udpPayload.toString());
-                            DragonEyeApplication.getInstance().mUdpClient.send(DragonEyeApplication.getInstance().getSelectedBase().getAddress(), DragonEyeBase.UDP_REMOTE_PORT, udpPayload.toString());
-                            //DragonEyeApplication.getInstance().mUdpClient.send("192.168.168.76", UDP_REMOTE_PORT, udpPayload.toString());
+                            b.setSystemSettings(udpPayload.toString());
                         }
                     }
                 });
@@ -258,6 +259,9 @@ public class SystemSettingsActivity extends AppCompatActivity {
 
         IntentFilter udpRcvIntentFilter = new IntentFilter("udpMsg");
         registerReceiver(broadcastReceiver, udpRcvIntentFilter);
+
+        IntentFilter baseRcvIntentFilter = new IntentFilter("baseMsg");
+        registerReceiver(broadcastReceiver, baseRcvIntentFilter);
     }
 
     @Override
@@ -269,23 +273,41 @@ public class SystemSettingsActivity extends AppCompatActivity {
     private BroadcastReceiver broadcastReceiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
-            if (intent.hasExtra("udpRcvMsg")) {
-                Message message = new Message();
-                message.obj = intent.getStringExtra("udpRcvMsg");
-                message.what = 1;
-                //Log.i("主界面Broadcast", "收到" + message.obj.toString());
-                mHandler.sendMessage(message);
-            } else if(intent.hasExtra("udpSendMsg")) {
-                Message message = new Message();
-                message.obj = intent.getStringExtra("udpSendMsg");
-                message.what = 2;
-                //Log.i("主界面Broadcast", "發送" + message.obj.toString());
-                mHandler.sendMessage(message);
-            } else if(intent.hasExtra("udpPollTimeout")) {
-                Message message = new Message();
-                message.what = 3;
-                //Log.i("主界面Broadcast","逾時");
-                mHandler.sendMessage(message);
+            if(intent.getAction().equals("udpMsg")) {
+                if (intent.hasExtra("udpRcvMsg")) {
+                    Message message = new Message();
+                    message.obj = intent.getStringExtra("udpRcvMsg");
+                    message.what = 1;
+                    //Log.i("主界面Broadcast", "收到" + message.obj.toString());
+                    mHandler.sendMessage(message);
+                } else if (intent.hasExtra("udpSendMsg")) {
+                    Message message = new Message();
+                    message.obj = intent.getStringExtra("udpSendMsg");
+                    message.what = 2;
+                    //Log.i("主界面Broadcast", "發送" + message.obj.toString());
+                    mHandler.sendMessage(message);
+                } else if (intent.hasExtra("udpPollTimeout")) {
+                    Message message = new Message();
+                    message.what = 3;
+                    //Log.i("主界面Broadcast","逾時");
+                    mHandler.sendMessage(message);
+                }
+            } else if(intent.getAction().equals("baseMsg")) {
+                if (intent.hasExtra("baseResponseTimeout")) {
+                    new AlertDialog.Builder(SystemSettingsActivity.this)
+                            .setTitle("Error !!!")
+                            .setMessage("Fail to save system settings ...")
+                            .setCancelable(false)
+                            .setPositiveButton("ok", new DialogInterface.OnClickListener() {
+                                @Override
+                                public void onClick(DialogInterface dialog, int which) {
+                                    // Whatever...
+                                    finish();
+                                }
+                            }).show();
+                } else if(intent.hasExtra("baseResponsed")) {
+
+                }
             }
         }
     };
@@ -294,12 +316,6 @@ public class SystemSettingsActivity extends AppCompatActivity {
         @Override
         public void onCreatePreferences(Bundle savedInstanceState, String rootKey) {
             setPreferencesFromResource(R.xml.system_preferences, rootKey);
-/*
-            ListPreference base_type = (ListPreference) getPreferenceManager().findPreference("base_type");
-            if(base_type != null) {
-                System.out.println("Base Type : " + base_type.getValue());
-            }
-*/
         }
     }
 }

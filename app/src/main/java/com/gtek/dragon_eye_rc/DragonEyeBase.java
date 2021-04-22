@@ -1,14 +1,24 @@
 package com.gtek.dragon_eye_rc;
 
+import android.content.Context;
+import android.content.Intent;
+import android.os.CountDownTimer;
 import android.text.TextUtils;
 
 import androidx.annotation.NonNull;
+
+import java.util.concurrent.atomic.AtomicBoolean;
 
 public class DragonEyeBase {
 
     public static final int UDP_REMOTE_PORT = 4999;
 
-    DragonEyeBase(String baseType, String address) {
+    private Context mContext;
+    private final AtomicBoolean isAlive = new AtomicBoolean(false);
+    private int mMulticastReceiveCount = 0;
+
+    DragonEyeBase(Context context, String baseType, String address) {
+        mContext = context;
         if(TextUtils.equals(baseType, "BASE_A"))
             mType = Type.BASE_A;
         else if(TextUtils.equals(baseType, "BASE_B"))
@@ -17,6 +27,29 @@ public class DragonEyeBase {
             mType = Type.BASE_UNKNOWN;
 
         mAddress = address;
+
+        isAlive.set(true);
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                int count = 0;
+                while(isAlive.get()) {
+                    try {
+                        Thread.sleep(4000);
+                        if(count == mMulticastReceiveCount) {
+                            offline();
+                            Intent intent = new Intent();
+                            intent.setAction("baseMsg");
+                            intent.putExtra("baseStatusUpdate", 0);
+                            mContext.sendBroadcast(intent);
+                        } else
+                            count = mMulticastReceiveCount;
+                    } catch (InterruptedException e) {
+                        e.printStackTrace();
+                    }
+                }
+            }
+        }).start();
     }
 
     public enum Type {
@@ -59,8 +92,53 @@ public class DragonEyeBase {
 
     private Status mStatus = Status.OFFLINE;
 
-    private String mAddress;
+    public class ResponseTimer implements Runnable {
+        private final AtomicBoolean isCancelled = new AtomicBoolean(false);
+        public void run() {
+            isCancelled.set(false);
 
+            try {
+                Thread.sleep(1000);
+            } catch (InterruptedException e) {
+                //e.printStackTrace();
+                isCancelled.set(true);
+            }
+
+            if(!isCancelled.get()) { /* Timeout */
+                mStatus = Status.OFFLINE;
+                Intent intent = new Intent();
+                intent.setAction("baseMsg");
+                intent.putExtra("baseResponseTimeout", 0);
+                mContext.sendBroadcast(intent);
+            } else {
+                Intent intent = new Intent();
+                intent.setAction("baseMsg");
+                intent.putExtra("baseResponsed", 0);
+                mContext.sendBroadcast(intent);
+            }
+        }
+
+        public void cancel() { isCancelled.set(true); }
+    }
+
+    private ResponseTimer mResponseTimer = new ResponseTimer();
+    private Thread mResponseTimerThread = null;
+
+    public void startResponseTimer() {
+        if(mResponseTimerThread != null) {
+            if (mResponseTimerThread.isAlive()) {
+                mResponseTimerThread.interrupt();
+            }
+        }
+        mResponseTimerThread = new Thread(mResponseTimer);
+        mResponseTimerThread.start();
+    }
+
+    public void stopResponseTimer() {
+        mResponseTimer.cancel();
+    }
+
+    private String mAddress;
     private String mSystemSettings;
     private String mCameraSettings;
 
@@ -78,7 +156,7 @@ public class DragonEyeBase {
     public void stopped() { mStatus = Status.STOPPED; }
     public void started() { mStatus = Status.STARTED; }
 
-    public void Reset() {
+    public void reset() {
         mType = Type.BASE_UNKNOWN;
         mStatus = Status.OFFLINE;
         mAddress = "";
@@ -86,9 +164,15 @@ public class DragonEyeBase {
         mCameraSettings = "";
     }
 
+    public void destroy() {
+        isAlive.set(false);
+    }
+
     public void setSystemSettings(String s) { mSystemSettings = s; }
     public void setCameraSettings(String s) { mCameraSettings = s; }
 
     final String getSystemSettings() { return mSystemSettings; }
     final String getCameraSettings() { return mCameraSettings; }
+
+    public void multicastReceived() { mMulticastReceiveCount++; }
 }

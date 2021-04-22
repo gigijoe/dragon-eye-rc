@@ -124,25 +124,31 @@ public class DragonEyeApplication extends Application {
     public void requestSystemSettings(DragonEyeBase b) {
         final String payloadString = "#SystemSettings";
         mUdpClient.send(b.getAddress(), DragonEyeBase.UDP_REMOTE_PORT, payloadString);
+        b.startResponseTimer();
     }
 
     public void requestCameraSettings(DragonEyeBase b) {
         final String payloadString = "#CameraSettings";
         mUdpClient.send(b.getAddress(), DragonEyeBase.UDP_REMOTE_PORT, payloadString);
+        b.startResponseTimer();
     }
 
     public void requestStatus(DragonEyeBase b) {
         final String payloadString = "#Status";
         mUdpClient.send(b.getAddress(), DragonEyeBase.UDP_REMOTE_PORT, payloadString);
+        b.startResponseTimer();
     }
 
     public void requestStart(DragonEyeBase b) {
         final String payloadString = "#Start";
         mUdpClient.send(b.getAddress(), DragonEyeBase.UDP_REMOTE_PORT, payloadString);
+        b.startResponseTimer();
     }
+
     public void requestStop(DragonEyeBase b) {
         final String payloadString = "#Stop";
         mUdpClient.send(b.getAddress(), DragonEyeBase.UDP_REMOTE_PORT, payloadString);
+        b.startResponseTimer();
     }
 
     @Override

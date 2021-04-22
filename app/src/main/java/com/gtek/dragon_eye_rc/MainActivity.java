@@ -117,17 +117,20 @@ public class MainActivity extends AppCompatActivity {
                     DragonEyeBase b = DragonEyeApplication.getInstance().findBaseByAddress(addr);
                     if(b != null) {
                         if(TextUtils.equals(s, "#Started")) {
+                            b.stopResponseTimer();
                             if(b.getStatus() != DragonEyeBase.Status.STARTED) {
                                 b.started();
                                 mListViewAdapter.notifyDataSetChanged();
                             }
                         } else if(TextUtils.equals(s, "#Stopped")) {
+                            b.stopResponseTimer();
                             if(b.getStatus() != DragonEyeBase.Status.STOPPED) {
                                 b.stopped();
                                 mListViewAdapter.notifyDataSetChanged();
                             }
                         } else if(s != null) {
                             if (s.startsWith("#SystemSettings")) {
+                                b.stopResponseTimer();
                                 String lines[] = s.split("\\r?\\n");
                                 for (int i = 0; i < lines.length; i++) {
                                     if (lines[i].length() > 0) {
@@ -149,7 +152,10 @@ public class MainActivity extends AppCompatActivity {
                                 }
                                 b.setSystemSettings(s);
                             } else if (s.startsWith("#CameraSettings")) {
+                                b.stopResponseTimer();
                                 b.setCameraSettings(s);
+                            } else if(TextUtils.equals(s, "#Ack")) {
+                                b.stopResponseTimer();
                             }
                         }
                     }
@@ -199,12 +205,16 @@ public class MainActivity extends AppCompatActivity {
             switch (v.getId())
             {
                 case R.id.iv_system_settings: System.out.println("iv_system_settings OnClick...");
+                    if(b.getStatus() == DragonEyeBase.Status.OFFLINE)
+                        break;
                     if(b.getSystemSettings() == null)
                         break;
                     Intent intent = new Intent(getApplicationContext(), SystemSettingsActivity.class);
                     startActivity(intent);
                     break;
                 case R.id.iv_camera_settings: System.out.println("iv_camera_settings OnClick...");
+                    if(b.getStatus() == DragonEyeBase.Status.OFFLINE)
+                        break;
                     if(b.getCameraSettings() == null)
                         break;
                     intent = new Intent(getApplicationContext(), CameraSettingsActivity.class);
@@ -258,12 +268,41 @@ public class MainActivity extends AppCompatActivity {
             viewHolder.txtName.setText(base.getType().toString());
             viewHolder.txtAddress.setText(base.getAddress());
             viewHolder.txtStatus.setText(base.getStatus().toString());
+            switch(base.getStatus()) {
+                case OFFLINE: viewHolder.txtStatus.setTextColor(Color.parseColor("#D3D3D3")); /* grey */
+                    break;
+                case ONLINE: viewHolder.txtStatus.setTextColor(Color.parseColor("#000000"));
+                    break;
+                case STOPPED: viewHolder.txtStatus.setTextColor(Color.parseColor("#FF0000"));
+                    break;
+                case STARTED: viewHolder.txtStatus.setTextColor(Color.parseColor("#00FF00"));
+                    break;
+            }
+
             viewHolder.imgSystemSettings.setOnClickListener(this);
             viewHolder.imgSystemSettings.setTag(position);
+            switch(base.getStatus()) {
+                case OFFLINE: viewHolder.imgSystemSettings.setColorFilter(Color.parseColor("#D3D3D3"));
+                    break;
+                default: viewHolder.imgSystemSettings.setColorFilter(Color.parseColor("#000000"));
+            }
+
             viewHolder.imgCameraSettings.setOnClickListener(this);
             viewHolder.imgCameraSettings.setTag(position);
+            switch(base.getStatus()) {
+                case OFFLINE: viewHolder.imgCameraSettings.setColorFilter(Color.parseColor("#D3D3D3"));
+                    break;
+                default: viewHolder.imgCameraSettings.setColorFilter(Color.parseColor("#000000"));
+            }
+
             viewHolder.imgRtspVideo.setOnClickListener(this);
             viewHolder.imgRtspVideo.setTag(position);
+            switch(base.getStatus()) {
+                case STARTED: viewHolder.imgRtspVideo.setColorFilter(Color.parseColor("#000000"));
+                    break;
+                default: viewHolder.imgRtspVideo.setColorFilter(Color.parseColor("#D3D3D3"));
+            }
+
             // Return the completed view to render on screen
             return convertView;
         }
@@ -448,13 +487,23 @@ public class MainActivity extends AppCompatActivity {
                             TextUtils.equals(baseHost[0], "BASE_B")) {
                         DragonEyeBase b = DragonEyeApplication.getInstance().findBaseByAddress(baseHost[1]);
                         if(b == null) { /* New base */
-                            b = new DragonEyeBase(baseHost[0], baseHost[1]); /* Type, Address */
+                            b = new DragonEyeBase(mContext, baseHost[0], baseHost[1]); /* Type, Address */
+                            b.multicastReceived();
+                            b.online();
                             DragonEyeApplication.getInstance().addBase(b);
                             mListView.deferNotifyDataSetChanged();
 
                             DragonEyeApplication.getInstance().requestSystemSettings(b);
                             DragonEyeApplication.getInstance().requestCameraSettings(b);
                             DragonEyeApplication.getInstance().requestStatus(b);
+                        } else { /* Base exist ... */
+                            b.multicastReceived();
+                            if(b.getStatus() == DragonEyeBase.Status.OFFLINE) {
+                                b.online();
+                                DragonEyeApplication.getInstance().requestSystemSettings(b);
+                                DragonEyeApplication.getInstance().requestCameraSettings(b);
+                                DragonEyeApplication.getInstance().requestStatus(b);
+                            }
                         }
                     } else if (TextUtils.equals(baseHost[0], "TRIGGER_A")) {
                         int i = Integer.parseInt(baseHost[1]);
@@ -565,7 +614,11 @@ public class MainActivity extends AppCompatActivity {
 
         IntentFilter udpRcvIntentFilter = new IntentFilter("udpMsg");
         registerReceiver(broadcastReceiver, udpRcvIntentFilter);
-/*
+
+        IntentFilter baseRcvIntentFilter = new IntentFilter("baseMsg");
+        registerReceiver(broadcastReceiver, baseRcvIntentFilter);
+
+        /*
         @SuppressLint("WifiManagerLeak") final WifiManager wifiManager = (WifiManager) getApplicationContext().getSystemService(Context.WIFI_SERVICE);
         final DhcpInfo dhcp = wifiManager.getDhcpInfo();
 
@@ -622,6 +675,9 @@ public class MainActivity extends AppCompatActivity {
             }
 
             private void onWifiConnectionChanged() {
+                for(DragonEyeBase b : DragonEyeApplication.getInstance().mBaseList) {
+                    b.destroy();
+                }
                 DragonEyeApplication.getInstance().mBaseList.clear();
                 mListViewAdapter.notifyDataSetChanged();
             }
@@ -686,23 +742,31 @@ public class MainActivity extends AppCompatActivity {
     private BroadcastReceiver broadcastReceiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
-            if (intent.hasExtra("udpRcvMsg")) {
-                Message message = new Message();
-                message.obj = intent.getStringExtra("udpRcvMsg");
-                message.what = 1;
-                //Log.i("主界面Broadcast", "收到" + message.obj.toString());
-                mHandler.sendMessage(message);
-            } else if(intent.hasExtra("udpSendMsg")) {
-                Message message = new Message();
-                message.obj = intent.getStringExtra("udpSendMsg");
-                message.what = 2;
-                //Log.i("主界面Broadcast", "發送" + message.obj.toString());
-                mHandler.sendMessage(message);
-            } else if(intent.hasExtra("udpPollTimeout")) {
-                Message message = new Message();
-                message.what = 3;
-                //Log.i("主界面Broadcast","逾時");
-                mHandler.sendMessage(message);
+            if(intent.getAction().equals("udpMsg")) {
+                if (intent.hasExtra("udpRcvMsg")) {
+                    Message message = new Message();
+                    message.obj = intent.getStringExtra("udpRcvMsg");
+                    message.what = 1;
+                    //Log.i("主界面Broadcast", "收到" + message.obj.toString());
+                    mHandler.sendMessage(message);
+                } else if (intent.hasExtra("udpSendMsg")) {
+                    Message message = new Message();
+                    message.obj = intent.getStringExtra("udpSendMsg");
+                    message.what = 2;
+                    //Log.i("主界面Broadcast", "發送" + message.obj.toString());
+                    mHandler.sendMessage(message);
+                } else if (intent.hasExtra("udpPollTimeout")) {
+                    Message message = new Message();
+                    message.what = 3;
+                    //Log.i("主界面Broadcast","逾時");
+                    mHandler.sendMessage(message);
+                }
+            } else if(intent.getAction().equals("baseMsg")) {
+                if (intent.hasExtra("baseResponseTimeout")) { // base has no response of UDP request
+                    mListViewAdapter.notifyDataSetChanged();
+                } else if(intent.hasExtra("baseStatusUpdate")) { // base status changed
+                    mListViewAdapter.notifyDataSetChanged();
+                }
             }
         }
     };
