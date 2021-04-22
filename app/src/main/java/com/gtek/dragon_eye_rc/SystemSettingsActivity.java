@@ -12,6 +12,7 @@ import android.os.Looper;
 import android.os.Message;
 import android.text.TextUtils;
 import android.view.View;
+import android.view.WindowManager;
 import android.widget.Toast;
 
 import androidx.appcompat.app.ActionBar;
@@ -27,6 +28,7 @@ import static com.gtek.dragon_eye_rc.DragonEyeBase.UDP_REMOTE_PORT;
 public class SystemSettingsActivity extends AppCompatActivity {
     private static final int RTP_REMOTE_PORT = 5000;
     private Context mContext;
+    private AlertDialog.Builder mBuilder;
 
     private final Handler mHandler = new Handler(Looper.getMainLooper()) {
         @Override
@@ -77,6 +79,17 @@ public class SystemSettingsActivity extends AppCompatActivity {
         }
 
         mContext = getApplicationContext();
+
+        mBuilder = new AlertDialog.Builder(this)
+                .setTitle("Error !!!")
+                .setMessage("Fail to save system settings ...")
+                .setCancelable(false)
+                .setPositiveButton("ok", new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        //finish();
+                    }
+                });
 
         DragonEyeBase b = DragonEyeApplication.getInstance().getSelectedBase();
         if(b != null) {
@@ -294,17 +307,11 @@ public class SystemSettingsActivity extends AppCompatActivity {
                 }
             } else if(intent.getAction().equals("baseMsg")) {
                 if (intent.hasExtra("baseResponseTimeout")) {
-                    new AlertDialog.Builder(SystemSettingsActivity.this)
-                            .setTitle("Error !!!")
-                            .setMessage("Fail to save system settings ...")
-                            .setCancelable(false)
-                            .setPositiveButton("ok", new DialogInterface.OnClickListener() {
-                                @Override
-                                public void onClick(DialogInterface dialog, int which) {
-                                    // Whatever...
-                                    finish();
-                                }
-                            }).show();
+                    try {
+                        mBuilder.show();
+                    } catch (WindowManager.BadTokenException e) {
+                        //use a log message
+                    }
                 } else if(intent.hasExtra("baseResponsed")) {
 
                 }
