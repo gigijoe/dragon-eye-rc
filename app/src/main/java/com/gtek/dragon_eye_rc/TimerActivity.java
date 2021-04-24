@@ -130,11 +130,20 @@ public class TimerActivity extends AppCompatActivity {
                             ArrayList<Integer> toneArray = new ArrayList<>();
                             toneArray.add(R.raw.r_e);
                             int v = mCount / 100;
-                            if (v <= 20)
+                            if (v <= 20) {
                                 toneArray.add(numberToResourId(v));
-                            else {
+                            } else if(v < 100) {
                                 toneArray.add(numberToResourId((v / 10) * 10));
                                 toneArray.add(numberToResourId(v % 10));
+                            } else if(v < 200){
+                                toneArray.add(numberToResourId((v / 100) * 100));
+                                int vv = v % 100;
+                                if(vv <= 20)
+                                    toneArray.add(numberToResourId(vv));
+                                else {
+                                    toneArray.add(numberToResourId((vv / 10) * 10));
+                                    toneArray.add(numberToResourId(vv % 10));
+                                }
                             }
                             toneArray.add(R.raw.r_point);
                             v = mCount % 100;

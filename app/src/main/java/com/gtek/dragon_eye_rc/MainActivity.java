@@ -32,6 +32,8 @@ import android.os.HandlerThread;
 import android.os.Looper;
 import android.os.Message;
 import android.text.TextUtils;
+import android.text.method.LinkMovementMethod;
+import android.text.util.Linkify;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.Menu;
@@ -784,12 +786,41 @@ public class MainActivity extends AppCompatActivity {
         return true;
     }
 
+    public void AboutWindow()
+    {
+        AlertDialog.Builder aboutWindow = new AlertDialog.Builder(this);//creates a new instance of a dialog box
+        final String website = "\t https://stevegigijoe.blogspot.com";
+        final String AboutDialogMessage = "\t dragon-eye-rc v0.1\n\t All bugs made by Steve Chang \n\t Website for contact :\n";
+        final TextView tx = new TextView(this);//we create a textview to store the dialog text/contents
+        tx.setText(AboutDialogMessage + website);//we set the text/contents
+        tx.setAutoLinkMask(RESULT_OK);//to linkify any website or email links
+        tx.setTextColor(Color.BLACK);//setting the text color
+        tx.setTextSize(15);//setting the text size
+        //again to enable any website urls or email addresses to be clickable links
+        tx.setMovementMethod(LinkMovementMethod.getInstance());
+        Linkify.addLinks(tx, Linkify.WEB_URLS);
+
+        aboutWindow.setTitle("About");//set the title of the about box to say "About"
+        aboutWindow.setView(tx);//set the textview on the dialog box
+
+        aboutWindow.setPositiveButton("OK", new DialogInterface.OnClickListener()//creates the OK button of the dialog box
+        {
+            @Override
+            public void onClick(DialogInterface dialog, int which) {
+                dialog.dismiss();//when the OK button is clicked, dismiss() is called to close it
+            }
+        });
+        aboutWindow.show();//this method call will bring up the dialog box when the user calls the AboutDialog() method
+    }
+
     @Override
     public boolean onOptionsItemSelected(@NonNull MenuItem item) {
         switch(item.getItemId()) {
             case R.id.item_f3f_timer:
                 Intent intent = new Intent(getApplicationContext(), TimerActivity.class);
                 startActivity(intent);
+                break;
+            case R.id.item_about: AboutWindow();
                 break;
         }
         return super.onOptionsItemSelected(item);

@@ -6,6 +6,7 @@
     <string name="camera_settings">Camera Settings</string>
     <string name="rtsp_video">RTSP Video</string>
     <string name="f3f_timer">F3F Timer</string>
+    <string name="about">About</string>
 
     <!--
     This string is used for square devices and overridden by hello_world in
