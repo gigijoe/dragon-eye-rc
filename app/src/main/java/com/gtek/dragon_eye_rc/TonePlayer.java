@@ -28,44 +28,38 @@ public class TonePlayer implements Runnable {
     private static int resourceId;
     private Context mContext;
     private final AtomicBoolean playing = new AtomicBoolean(false);
+    public final AtomicBoolean interrupt = new AtomicBoolean(false);
 
     public TonePlayer(Context context) {
         mContext = context;
         bufferSizeInBytes = AudioTrack.getMinBufferSize(sampleRateInHz,
                 channelConfig,
                 audioFormat);
+
+        audioTrack = new AudioTrack(
+                new AudioAttributes.Builder()
+                            .setUsage(AudioAttributes.USAGE_MEDIA)
+                            .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
+                            .build(),
+                new AudioFormat.Builder()
+                            .setSampleRate(sampleRateInHz)
+                            .setEncoding(audioFormat)
+                            .setChannelMask(channelConfig).build(),
+                    bufferSizeInBytes * 4,
+                AudioTrack.MODE_STREAM,
+                AudioManager.AUDIO_SESSION_ID_GENERATE);
     }
 
     public void startPlay(int audioResourceId) {
-        resourceId = audioResourceId;
-
-        if(audioTrack == null) {
-                audioTrack = new AudioTrack(
-                        new AudioAttributes.Builder()
-                                .setUsage(AudioAttributes.USAGE_MEDIA)
-                                .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
-                                .build(),
-                        new AudioFormat.Builder()
-                                .setSampleRate(sampleRateInHz)
-                                .setEncoding(audioFormat)
-                                .setChannelMask(channelConfig).build(),
-                        bufferSizeInBytes,
-                        AudioTrack.MODE_STREAM,
-                        AudioManager.AUDIO_SESSION_ID_GENERATE);
-        }
-        audioTrack.play();
-
         playing.set(true);
+        interrupt.set(false);
+
+        resourceId = audioResourceId;
     }
 
     public void stopPlay() {
-        playing.set(false);
-
-        if(audioTrack != null) {
-            audioTrack.stop();
-            audioTrack.release();
-            audioTrack = null;
-        }
+        interrupt.set(true);
+        audioTrack.stop();
     }
 
     public boolean isPlaying() {
@@ -73,9 +67,8 @@ public class TonePlayer implements Runnable {
     }
 
     private void play(byte[] data) {
-        if(audioTrack == null)
+        if(audioTrack.getPlayState() != AudioTrack.PLAYSTATE_PLAYING)
             return;
-        //if(audioTrack.getPlayState() == 1)
         audioTrack.write(data, 0, data.length);
     }
 
@@ -86,15 +79,15 @@ public class TonePlayer implements Runnable {
         is = mContext.getResources().openRawResource(resourceId);
 
         try {
-            while (is.read(buffer) != -1) {
+            audioTrack.play();
+            while (is.read(buffer) != -1 && !interrupt.get()) {
                 play(buffer);
-                if(!playing.get())
-                    break;
             }
-            playing.set(false);
             System.out.println("Finish tone ...");
         } catch (Exception e) {
             e.printStackTrace();
         }
+        audioTrack.stop();
+        playing.set(false);
     }
 }

@@ -18,6 +18,7 @@ import android.widget.Toast;
 import androidx.appcompat.app.ActionBar;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.appcompat.widget.Toolbar;
 import androidx.preference.PreferenceFragmentCompat;
 import androidx.preference.PreferenceManager;
 
@@ -79,7 +80,10 @@ public class SystemSettingsActivity extends AppCompatActivity {
         }
 
         mContext = getApplicationContext();
-
+/*
+        Toolbar toolbar = (Toolbar) findViewById(R.id.system_settings_toolbar);
+        setSupportActionBar(toolbar);
+*/
         mBuilder = new AlertDialog.Builder(this)
                 .setTitle("Error !!!")
                 .setMessage("Fail to save system settings ...")

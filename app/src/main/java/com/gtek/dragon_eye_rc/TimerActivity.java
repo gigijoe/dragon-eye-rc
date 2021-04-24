@@ -13,6 +13,7 @@ import android.os.Looper;
 import android.os.Message;
 import android.text.TextUtils;
 import android.view.View;
+import android.widget.Button;
 import android.widget.TextView;
 
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
@@ -20,6 +21,7 @@ import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import java.util.ArrayList;
 import java.util.Timer;
 import java.util.TimerTask;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static com.gtek.dragon_eye_rc.TimerState.finishState;
 import static com.gtek.dragon_eye_rc.TimerState.idleState;
@@ -29,15 +31,16 @@ import static com.gtek.dragon_eye_rc.TimerState.thirtySecondState;
 public class TimerActivity extends AppCompatActivity {
     private Timer mTimer;
     private TimerTask mTimerTask = null;
-    private boolean isPause = false;
     private static int mCount = 0;
     private static int serNoA = -1, serNoB = -1;
 
-    public TextView mTextView;
+    private TextView mTextViewDuration;
+    private TextView mTextViewTimerStatus;
+    private Button mButtonA, mButtonB;
 
     private TimerState mTimerState = idleState;
     private boolean mOutside = false;
-    private int mCourseCount = -1;
+    private AtomicInteger mCourseCount = new AtomicInteger(-1);
 
     private ThirtySecondTimer mThirtySecondTimer = new ThirtySecondTimer(30000, 10);
     private long mCountDownSecond = 30;
@@ -48,8 +51,9 @@ public class TimerActivity extends AppCompatActivity {
             mTimerState = thirtySecondState;
             mCountDownSecond = 30;
             mThirtySecondTimer.start();
-            mCourseCount = -1;
+            mCourseCount.set(-1);
             mOutside = false;
+            mTextViewTimerStatus.setText("Thirty seconds ...");
         }
     }
 
@@ -59,12 +63,15 @@ public class TimerActivity extends AppCompatActivity {
                 DragonEyeApplication.getInstance().playPriorityTone(R.raw.smb_die);
                 mThirtySecondTimer.cancel();
                 mTimerState = finishState;
+                mTextViewTimerStatus.setText("Cancelled !!!");
             } else if(mTimerState == speedCourseState) {
                 DragonEyeApplication.getInstance().playPriorityTone(R.raw.smb_die);
                 stopTimer();
                 mTimerState = finishState;
+                mTextViewTimerStatus.setText("Cancelled !!!");
             } else if(mTimerState == finishState) {
-                mTextView.setText("0.00");
+                mTextViewDuration.setText("0.00");
+                mTextViewTimerStatus.setText("Press Start ...");
                 mTimerState = idleState;
                 DragonEyeApplication.getInstance().stopTone();
             }
@@ -75,29 +82,42 @@ public class TimerActivity extends AppCompatActivity {
         if(mTimerState == thirtySecondState) {
             if(mOutside == false) { // Outside
                 mOutside = true;
+                System.out.println("mCourseCount.get() = " + mCourseCount.get());
                 DragonEyeApplication.getInstance().playPriorityTone(R.raw.r_outside);
+                mTextViewTimerStatus.setText("Outside !!!");
             } else { // Enter speed course
                 mThirtySecondTimer.cancel();
                 mTimerState = speedCourseState;
-                mCourseCount = 0;
+                mCourseCount.incrementAndGet();
+                System.out.println("mCourseCount.get() = " + mCourseCount.get());
                 startTimer();
                 DragonEyeApplication.getInstance().playPriorityTone(R.raw.r_a);
+                mTextViewTimerStatus.setText("Course " + mCourseCount.get());
             }
         } else if(mTimerState == speedCourseState) {
             if(mOutside == false) { // Outside
                 mOutside = true;
+                System.out.println("mCourseCount.get() = " + mCourseCount.get());
                 DragonEyeApplication.getInstance().playPriorityTone(R.raw.r_outside);
+                mTextViewTimerStatus.setText("Outside !!!");
             } else {
-                if(mCourseCount > 0 && mCourseCount % 2 == 0)
+                if(mCourseCount.get() % 2 == 0)
                     return;
 
-                mCourseCount++;
+                mCourseCount.incrementAndGet();
+                System.out.println("mCourseCount.get() = " + mCourseCount.get());
 
-                if (mCourseCount < 10)
+                if (mCourseCount.get() < 10) {
                     DragonEyeApplication.getInstance().playPriorityTone(R.raw.r_a);
-                else {
+                    mTextViewTimerStatus.setText("Course " + mCourseCount.get());
+                } else {
                     stopTimer();
                     mTimerState = finishState;
+
+                    mTextViewTimerStatus.setText("Finished ...");
+
+                    if(mCount >= 20000) // 200 secs
+                        return;
 
                     Thread thread = new Thread(new Runnable() {
                         @Override
@@ -168,24 +188,28 @@ public class TimerActivity extends AppCompatActivity {
 
     private void onBaseB() {
         if(mTimerState == speedCourseState) {
-            if(mCourseCount < 10) {
-                if(mCourseCount < 0 || mCourseCount % 2 == 1)
+            if(mCourseCount.get() < 10) {
+                if(mCourseCount.get() == -1 || mCourseCount.get() % 2 == 1)
                     return;
-                mCourseCount++;
-                if(mCourseCount < 9)
+                mCourseCount.incrementAndGet();
+                System.out.println("mCourseCount.get() = " + mCourseCount.get());
+                mTextViewTimerStatus.setText("Course " + mCourseCount.get());
+                if(mCourseCount.get() < 9)
                     DragonEyeApplication.getInstance().playPriorityTone(R.raw.r_b);
                 else
                     DragonEyeApplication.getInstance().playPriorityTone(R.raw.r_final);
             }
         } else if(mTimerState == finishState) { // Restart game
             mTimerState = idleState;
+            System.out.println("mCourseCount.get() = " + mCourseCount.get());
+            mTextViewTimerStatus.setText("Thirty seconds ...");
             onButtonStart();
         }
     }
 
     private void onThirtySecondTick(long tick) {
         float duration = (float)tick / 1000;
-        mTextView.setText(String.format("%.2f", duration));
+        mTextViewDuration.setText(String.format("%.2f", duration));
 
         if(mCountDownSecond - (tick / 1000) > 1) {
             mCountDownSecond--;
@@ -228,7 +252,24 @@ public class TimerActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_timer);
 
-        mTextView = (TextView) findViewById(R.id.durationTextView);
+        mTextViewDuration = (TextView) findViewById(R.id.textViewDuration);
+        mTextViewTimerStatus = (TextView) findViewById(R.id.textViewTimerStatus);
+
+        mButtonA = (Button) findViewById(R.id.buttonA);
+        mButtonA.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                onBaseA();
+            }
+        });
+
+        mButtonB = (Button) findViewById(R.id.buttonB);
+        mButtonB.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                onBaseB();
+            }
+        });
 
         IntentFilter mcastRcvIntentFilter = new IntentFilter("mcastMsg");
         registerReceiver(broadcastReceiver, mcastRcvIntentFilter);
@@ -238,15 +279,6 @@ public class TimerActivity extends AppCompatActivity {
             @Override
             public void onClick(View view) {
                 onButtonStart();
-/*
-                Thread thread = new Thread(new Runnable() {
-                    @Override
-                    public void run() {
-                        startTimer();
-                    }
-                });
-                thread.start();
- */
             }
         });
 
@@ -254,18 +286,7 @@ public class TimerActivity extends AppCompatActivity {
         bp.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                //if(DragonEyeApplication.getInstance().mBaseList.isEmpty())
-                //    return;
                 onButtonStop();
-                /*
-                Thread thread = new Thread(new Runnable() {
-                    @Override
-                    public void run() {
-                        stopTimer();
-                    }
-                });
-                thread.start();
-                 */
             }
         });
     }
@@ -295,8 +316,8 @@ public class TimerActivity extends AppCompatActivity {
 
             //Do something to the UI thread here
             float duration = (float)mCount / 100;
-            //mTextView.setText(Float.toString(duration));
-            mTextView.setText(String.format("%.2f", duration));
+            //mTextViewDuration.setText(Float.toString(duration));
+            mTextViewDuration.setText(String.format("%.2f", duration));
         }
     };
 
@@ -310,13 +331,6 @@ public class TimerActivity extends AppCompatActivity {
             mTimerTask = new TimerTask() {
                 @Override
                 public void run() {
-                    do {
-                        try {
-                            Thread.sleep(10);
-                        } catch (InterruptedException e) {
-                        }
-                    } while (isPause);
-
                     TimerMethod();
                 }
             };
@@ -346,7 +360,7 @@ public class TimerActivity extends AppCompatActivity {
         public void onTick(long millisUntilFinished) {
             onThirtySecondTick(millisUntilFinished);
             //tv.setText("請等待：" + millisUntilFinished / 1000 + "秒...");
-            //mTextView.setText(Float.toString(duration));
+            //mTextViewDuration.setText(Float.toString(duration));
         }
 
         @Override
@@ -399,18 +413,15 @@ public class TimerActivity extends AppCompatActivity {
                 Message message = new Message();
                 message.obj = intent.getStringExtra("mcastRcvMsg");
                 message.what = 1;
-                //Log.i("主界面Broadcast", "收到" + message.obj.toString());
                 mHandler.sendMessage(message);
             } else if(intent.hasExtra("mcastSendMsg")) {
                 Message message = new Message();
                 message.obj = intent.getStringExtra("mcastSendMsg");
                 message.what = 2;
-                //Log.i("主界面Broadcast", "發送" + message.obj.toString());
                 mHandler.sendMessage(message);
             } else if(intent.hasExtra("mcastPollTimeout")) {
                 Message message = new Message();
                 message.what = 3;
-                //Log.i("主界面Broadcast","逾時");
                 mHandler.sendMessage(message);
             }
         }

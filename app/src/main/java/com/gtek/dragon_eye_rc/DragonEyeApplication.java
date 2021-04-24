@@ -33,16 +33,17 @@ public class DragonEyeApplication extends Application {
 
     public TonePlayer mTonePlayer = null;
     private final AtomicBoolean isPriorityPlaying = new AtomicBoolean(false);
-    ArrayList<Integer> toneArray;
+    ArrayList<Integer> toneArray = null;
 
     public void playTone(int resourceId) {
-        if(mTonePlayer.isPlaying() && isPriorityPlaying.get())
-            return;
-
-        if(mTonePlayer.isPlaying())
-            mTonePlayer.stopPlay();
-
-        isPriorityPlaying.set(false);
+        if(mTonePlayer.isPlaying()) {
+            if(isPriorityPlaying.get())
+                return;
+            else
+                mTonePlayer.stopPlay();
+        } else {
+            isPriorityPlaying.set(false);
+        }
 
         mTonePlayer.startPlay(resourceId);
         Thread t = new Thread(mTonePlayer);
@@ -51,9 +52,9 @@ public class DragonEyeApplication extends Application {
 
     public void playPriorityTone(int resourceId) {
         if(mTonePlayer.isPlaying()) {
-            if(toneArray != null)
-                toneArray.clear();
             mTonePlayer.stopPlay();
+           if(toneArray != null)
+               toneArray.clear();
         }
 
         isPriorityPlaying.set(true);
@@ -80,6 +81,8 @@ public class DragonEyeApplication extends Application {
                             e.printStackTrace();
                         }
                     }
+                    if(mTonePlayer.interrupt.get())
+                        break;
                 }
                 toneArray = null;
             }
@@ -89,11 +92,10 @@ public class DragonEyeApplication extends Application {
 
     public void stopTone() {
         if(mTonePlayer.isPlaying()) {
+            mTonePlayer.stopPlay();
             if(toneArray != null)
                 toneArray.clear();
-            mTonePlayer.stopPlay();
         }
-        isPriorityPlaying.set(false);
     }
 
     public ArrayList<DragonEyeBase> mBaseList = new ArrayList<>();
