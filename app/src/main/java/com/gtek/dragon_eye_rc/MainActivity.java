@@ -156,6 +156,14 @@ public class MainActivity extends AppCompatActivity {
                             } else if (s.startsWith("#CameraSettings")) {
                                 b.stopResponseTimer();
                                 b.setCameraSettings(s);
+                            } else if(TextUtils.equals(s, "#CompassLock")) {
+                                b.stopResponseTimer();
+                                b.compassLock();
+                                mListViewAdapter.notifyDataSetChanged();
+                            } else if(TextUtils.equals(s, "#CompassUnlock")) {
+                                b.stopResponseTimer();
+                                b.compassUnlock();
+                                mListViewAdapter.notifyDataSetChanged();
                             } else if(TextUtils.equals(s, "#Ack")) {
                                 b.stopResponseTimer();
                             }
@@ -186,6 +194,7 @@ public class MainActivity extends AppCompatActivity {
             TextView txtName;
             TextView txtAddress;
             TextView txtStatus;
+            ImageView imgCompassCalibration;
             ImageView imgSystemSettings;
             ImageView imgCameraSettings;
             ImageView imgRtspVideo;
@@ -206,8 +215,20 @@ public class MainActivity extends AppCompatActivity {
 
             switch (v.getId())
             {
+                case R.id.iv_explore: System.out.println("iv_explore OnClick...");
+                    Thread thread = new Thread(new Runnable() {
+                        @Override
+                        public void run() {
+                            if(b.isCompassLocked())
+                                DragonEyeApplication.getInstance().requestCompassUnlock(b);
+                            else
+                                DragonEyeApplication.getInstance().requestCompassLock(b);
+                       }
+                    });
+                    thread.start();
+                    break;
                 case R.id.iv_system_settings: System.out.println("iv_system_settings OnClick...");
-                    if(b.getStatus() == DragonEyeBase.Status.OFFLINE)
+                    if(b.getStatus() == DragonEyeBase.Status.OFFLINE || b.getStatus() == DragonEyeBase.Status.STARTED)
                         break;
                     if(b.getSystemSettings() == null)
                         break;
@@ -215,7 +236,7 @@ public class MainActivity extends AppCompatActivity {
                     startActivity(intent);
                     break;
                 case R.id.iv_camera_settings: System.out.println("iv_camera_settings OnClick...");
-                    if(b.getStatus() == DragonEyeBase.Status.OFFLINE)
+                    if(b.getStatus() == DragonEyeBase.Status.OFFLINE || b.getStatus() == DragonEyeBase.Status.STARTED)
                         break;
                     if(b.getCameraSettings() == null)
                         break;
@@ -251,6 +272,7 @@ public class MainActivity extends AppCompatActivity {
                 viewHolder.txtName = (TextView) convertView.findViewById(R.id.iv_name);
                 viewHolder.txtAddress = (TextView) convertView.findViewById(R.id.tv_ip);
                 viewHolder.txtStatus = (TextView) convertView.findViewById(R.id.tv_status);
+                viewHolder.imgCompassCalibration = (ImageView) convertView.findViewById(R.id.iv_explore);
                 viewHolder.imgSystemSettings = (ImageView) convertView.findViewById(R.id.iv_system_settings);
                 viewHolder.imgCameraSettings = (ImageView) convertView.findViewById(R.id.iv_camera_settings);
                 viewHolder.imgRtspVideo = (ImageView) convertView.findViewById(R.id.iv_rtsp_video);
@@ -281,10 +303,25 @@ public class MainActivity extends AppCompatActivity {
                     break;
             }
 
+            viewHolder.imgCompassCalibration.setOnClickListener(this);
+            viewHolder.imgCompassCalibration.setTag(position);
+            switch(base.getStatus()) {
+                case OFFLINE:
+                    viewHolder.imgCompassCalibration.setColorFilter(Color.parseColor("#D3D3D3")); /* grey */
+                    break;
+                default:
+                    if(base.isCompassLocked())
+                        viewHolder.imgCompassCalibration.setColorFilter(Color.parseColor("#00ff00"));
+                    else
+                        viewHolder.imgCompassCalibration.setColorFilter(Color.parseColor("#000000"));
+                    break;
+            }
+
             viewHolder.imgSystemSettings.setOnClickListener(this);
             viewHolder.imgSystemSettings.setTag(position);
             switch(base.getStatus()) {
-                case OFFLINE: viewHolder.imgSystemSettings.setColorFilter(Color.parseColor("#D3D3D3"));
+                case OFFLINE:
+                case STARTED: viewHolder.imgSystemSettings.setColorFilter(Color.parseColor("#D3D3D3"));
                     break;
                 default: viewHolder.imgSystemSettings.setColorFilter(Color.parseColor("#000000"));
             }
@@ -292,7 +329,8 @@ public class MainActivity extends AppCompatActivity {
             viewHolder.imgCameraSettings.setOnClickListener(this);
             viewHolder.imgCameraSettings.setTag(position);
             switch(base.getStatus()) {
-                case OFFLINE: viewHolder.imgCameraSettings.setColorFilter(Color.parseColor("#D3D3D3"));
+                case OFFLINE:
+                case STARTED: viewHolder.imgCameraSettings.setColorFilter(Color.parseColor("#D3D3D3"));
                     break;
                 default: viewHolder.imgCameraSettings.setColorFilter(Color.parseColor("#000000"));
             }
@@ -483,6 +521,8 @@ public class MainActivity extends AppCompatActivity {
 
                 String baseHost[] = msg.split(":");
                 if (baseHost.length >= 2) {
+                    if(TextUtils.equals(baseHost[0], "127.0.0.1"))
+                        continue;
                     //System.out.println(baseHost[0]);
                     //System.out.println(baseHost[1]);
                     if (TextUtils.equals(baseHost[0], "BASE_A") ||
@@ -790,7 +830,7 @@ public class MainActivity extends AppCompatActivity {
     {
         AlertDialog.Builder aboutWindow = new AlertDialog.Builder(this);//creates a new instance of a dialog box
         final String website = "\t https://stevegigijoe.blogspot.com";
-        final String AboutDialogMessage = "\t dragon-eye-rc v0.1\n\t All bugs made by Steve Chang \n\t Website for contact :\n";
+        final String AboutDialogMessage = "\t dragon-eye-rc v0.1.2\n\t All bugs made by Steve Chang \n\t Website for contact :\n";
         final TextView tx = new TextView(this);//we create a textview to store the dialog text/contents
         tx.setText(AboutDialogMessage + website);//we set the text/contents
         tx.setAutoLinkMask(RESULT_OK);//to linkify any website or email links

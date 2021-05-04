@@ -45,6 +45,9 @@ public class TimerActivity extends AppCompatActivity {
     private ThirtySecondTimer mThirtySecondTimer = new ThirtySecondTimer(30000, 10);
     private long mCountDownSecond = 30;
 
+    private RepeatTriggerTimer mRepeatTriggerTimer = new RepeatTriggerTimer(1000, 10);
+    private AtomicInteger mRepeatTriggerTick = new AtomicInteger(0);
+    
     private void onButtonStart() {
         if(mTimerState == idleState) {
             DragonEyeApplication.getInstance().playPriorityTone(R.raw.r_go);
@@ -379,6 +382,22 @@ public class TimerActivity extends AppCompatActivity {
         }
     }
 
+    class RepeatTriggerTimer extends CountDownTimer {
+        public RepeatTriggerTimer(long millisInFuture, long countDownInterval) {
+            super(millisInFuture, countDownInterval);
+        }
+
+        @Override
+        public void onTick(long millisUntilFinished) {
+            mRepeatTriggerTick.incrementAndGet();
+        }
+
+        @Override
+        public void onFinish() {
+            mRepeatTriggerTick.set(0);
+        }
+    }
+    
     private final Handler mHandler = new Handler(Looper.getMainLooper()) {
         @Override
         public void handleMessage(Message msg) {
@@ -392,15 +411,21 @@ public class TimerActivity extends AppCompatActivity {
                         if (TextUtils.equals(baseHost[0], "TRIGGER_A")) {
                             int i = Integer.parseInt(baseHost[1]);
                             if (i != serNoA) {
-                                //DragonEyeApplication.getInstance().playPriorityTone(R.raw.r_a);
-                                onBaseA();
+                                if(mRepeatTriggerTick.get() == 0) {
+                                    mRepeatTriggerTimer.cancel();
+                                    mRepeatTriggerTimer.start();
+                                    onBaseA();
+                                }
                                 serNoA = i;
                             }
                         } else if (TextUtils.equals(baseHost[0], "TRIGGER_B")) {
                             int i = Integer.parseInt(baseHost[1]);
                             if(i != serNoB) {
-                                //DragonEyeApplication.getInstance().playPriorityTone(R.raw.r_b);
-                                onBaseB();
+                                if(mRepeatTriggerTick.get() == 0) {
+                                    mRepeatTriggerTimer.cancel();
+                                    mRepeatTriggerTimer.start();
+                                    onBaseB();
+                                }
                                 serNoB = i;
                             }
                         }

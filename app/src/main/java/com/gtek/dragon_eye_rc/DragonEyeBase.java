@@ -16,6 +16,7 @@ public class DragonEyeBase {
     private Context mContext;
     private final AtomicBoolean isAlive = new AtomicBoolean(false);
     private int mMulticastReceiveCount = 0;
+    private boolean mCompassLocked = false;
 
     DragonEyeBase(Context context, String baseType, String address) {
         mContext = context;
@@ -155,6 +156,9 @@ public class DragonEyeBase {
     public void online() { mStatus = Status.ONLINE; }
     public void stopped() { mStatus = Status.STOPPED; }
     public void started() { mStatus = Status.STARTED; }
+    public void compassLock() { mCompassLocked = true; }
+    public void compassUnlock() { mCompassLocked = false; }
+    public boolean isCompassLocked() { return mCompassLocked; }
 
     public void reset() {
         mType = Type.BASE_UNKNOWN;

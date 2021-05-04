@@ -5,6 +5,7 @@
     <string name="system_settings">System Settings</string>
     <string name="camera_settings">Camera Settings</string>
     <string name="rtsp_video">RTSP Video</string>
+    <string name="compass_calibration">Compass Calibration</string>
     <string name="f3f_timer">F3F Timer</string>
     <string name="about">About</string>
 
