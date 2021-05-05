@@ -18,6 +18,7 @@ import android.content.pm.PackageManager;
 import android.graphics.Color;
 import android.net.ConnectivityManager;
 import android.net.DhcpInfo;
+import android.net.InetAddresses;
 import android.net.Network;
 import android.net.NetworkCapabilities;
 import android.net.NetworkInfo;
@@ -101,89 +102,6 @@ public class MainActivity extends AppCompatActivity {
 
     private boolean isPaused = false;
 
-    private final Handler mHandler = new Handler(Looper.getMainLooper()) {
-        @Override
-        public void handleMessage(Message msg) {
-            super.handleMessage(msg);
-            switch (msg.what) {
-                case 1: /* RX */
-                    String str = msg.obj.toString();
-                    System.out.println("UDP RX : " + str);
-                    int index = str.indexOf(':');
-                    String addr = str.substring(0, index);
-                    String s = str.substring(index+1);
-                    //udpRcvStrBuf.append(msg.obj.toString());
-                    //txt_Recv.setText(udpRcvStrBuf.toString());
-                    //System.out.println("UDP RX : " + msg.obj.toString());
-
-                    DragonEyeBase b = DragonEyeApplication.getInstance().findBaseByAddress(addr);
-                    if(b != null) {
-                        if(TextUtils.equals(s, "#Started")) {
-                            b.stopResponseTimer();
-                            if(b.getStatus() != DragonEyeBase.Status.STARTED) {
-                                b.started();
-                                mListViewAdapter.notifyDataSetChanged();
-                            }
-                        } else if(TextUtils.equals(s, "#Stopped")) {
-                            b.stopResponseTimer();
-                            if(b.getStatus() != DragonEyeBase.Status.STOPPED) {
-                                b.stopped();
-                                mListViewAdapter.notifyDataSetChanged();
-                            }
-                        } else if(s != null) {
-                            if (s.startsWith("#SystemSettings")) {
-                                b.stopResponseTimer();
-                                String lines[] = s.split("\\r?\\n");
-                                for (int i = 0; i < lines.length; i++) {
-                                    if (lines[i].length() > 0) {
-                                        if (lines[i].startsWith("#"))
-                                            continue;
-                                    }
-                                    //System.out.println(i + " " + lines[i]);
-                                    String keyValue[] = lines[i].split("=");
-                                    if (keyValue.length == 2) {
-                                        //System.out.println("[ " + keyValue[0] + " ] = " + keyValue[1]);
-                                        if (TextUtils.equals(keyValue[0], "base.type")) {
-                                            if (TextUtils.equals(keyValue[1], "A")) {
-                                                b.setTypeBaseA();
-                                            } else if (TextUtils.equals(keyValue[1], "B")) {
-                                                b.setTypeBaseB();
-                                            }
-                                        }
-                                    }
-                                }
-                                b.setSystemSettings(s);
-                            } else if (s.startsWith("#CameraSettings")) {
-                                b.stopResponseTimer();
-                                b.setCameraSettings(s);
-                            } else if(TextUtils.equals(s, "#CompassLock")) {
-                                b.stopResponseTimer();
-                                b.compassLock();
-                                mListViewAdapter.notifyDataSetChanged();
-                            } else if(TextUtils.equals(s, "#CompassUnlock")) {
-                                b.stopResponseTimer();
-                                b.compassUnlock();
-                                mListViewAdapter.notifyDataSetChanged();
-                            } else if(TextUtils.equals(s, "#Ack")) {
-                                b.stopResponseTimer();
-                            }
-                        }
-                    }
-                    break;
-                case 2: /* TX */
-                    //udpSendStrBuf.append(msg.obj.toString());
-                    //txt_Send.setText(udpSendStrBuf.toString());
-                    System.out.println("UDP TX : " + msg.obj.toString());
-                    //Toast.makeText(mContext,"UDP TX.",Toast.LENGTH_SHORT).show();
-                    break;
-                case 3: /* Timeout */
-                    //txt_Recv.setText(udpRcvStrBuf.toString());
-                    System.out.println("UDP RX Timeout");
-                    break;
-            }
-        }
-    };
-
     public class ListViewAdapter extends ArrayAdapter<DragonEyeBase> implements View.OnClickListener {
 
         private ArrayList<DragonEyeBase> mBaseList;
@@ -198,6 +116,7 @@ public class MainActivity extends AppCompatActivity {
             ImageView imgSystemSettings;
             ImageView imgCameraSettings;
             ImageView imgRtspVideo;
+            TextView txtTelemetry;
         }
 
         ListViewAdapter(ArrayList<DragonEyeBase> baseList, Context context) {
@@ -276,6 +195,7 @@ public class MainActivity extends AppCompatActivity {
                 viewHolder.imgSystemSettings = (ImageView) convertView.findViewById(R.id.iv_system_settings);
                 viewHolder.imgCameraSettings = (ImageView) convertView.findViewById(R.id.iv_camera_settings);
                 viewHolder.imgRtspVideo = (ImageView) convertView.findViewById(R.id.iv_rtsp_video);
+                viewHolder.txtTelemetry = (TextView)  convertView.findViewById(R.id.iv_telemetry);
 
                 result=convertView;
 
@@ -342,6 +262,9 @@ public class MainActivity extends AppCompatActivity {
                     break;
                 default: viewHolder.imgRtspVideo.setColorFilter(Color.parseColor("#D3D3D3"));
             }
+
+            String s = "Yaw " + base.yaw() + "\u00b0 / " + "Temp " + (float)base.temperature() / 1000.0 + "\u2103" + " / GPU " + base.gpuLoad() / 10 + "%";
+            viewHolder.txtTelemetry.setText(s);
 
             // Return the completed view to render on screen
             return convertView;
@@ -495,39 +418,47 @@ public class MainActivity extends AppCompatActivity {
                     socket.setSoTimeout(2000);
                     socket.receive(packet);
                 } catch (SocketTimeoutException e) {
+                    //e.printStackTrace();
                     System.out.println("multicastThread - RX timeout");
-
+/*
                     Intent intent = new Intent();
                     intent.setAction("mcastMsg");
                     intent.putExtra("mcastPollTimeout", 0);
                     mContext.sendBroadcast(intent);
-
+*/
                     continue;
                 } catch (SocketException e) {
                     e.printStackTrace();
+                    continue;
                 } catch (IOException e) {
                     e.printStackTrace();
+                    continue;
                 }
+
                 if (packet.getLength() == 0)
                     continue;
 
                 String msg = new String(packet.getData(), packet.getOffset(), packet.getLength());
                 System.out.println("Multicast receive : " + msg);
 
-                Intent intent = new Intent();
-                intent.setAction("mcastMsg");
-                intent.putExtra("mcastRcvMsg", msg);
-                mContext.sendBroadcast(intent);
-
                 String baseHost[] = msg.split(":");
                 if (baseHost.length >= 2) {
-                    if(TextUtils.equals(baseHost[0], "127.0.0.1"))
-                        continue;
+                    DragonEyeBase b = DragonEyeApplication.getInstance().findBaseByAddress(baseHost[1]);
                     //System.out.println(baseHost[0]);
                     //System.out.println(baseHost[1]);
                     if (TextUtils.equals(baseHost[0], "BASE_A") ||
                             TextUtils.equals(baseHost[0], "BASE_B")) {
-                        DragonEyeBase b = DragonEyeApplication.getInstance().findBaseByAddress(baseHost[1]);
+                        try {
+                            InetAddress.getByName(baseHost[1]); // Test if valid ip address
+                        } catch (UnknownHostException e) {
+                            Log.i("UDPClient", "Unknown host : " + baseHost[1]);
+                            e.printStackTrace();
+                            continue;
+                        }
+
+                        if(TextUtils.equals(baseHost[1], "127.0.0.1"))
+                            continue;
+
                         if(b == null) { /* New base */
                             b = new DragonEyeBase(mContext, baseHost[0], baseHost[1]); /* Type, Address */
                             b.multicastReceived();
@@ -546,6 +477,17 @@ public class MainActivity extends AppCompatActivity {
                                 DragonEyeApplication.getInstance().requestCameraSettings(b);
                                 DragonEyeApplication.getInstance().requestStatus(b);
                             }
+                        }
+
+                        if(baseHost.length >= 5) {
+                            b.setYaw(Integer.parseInt(baseHost[2]));
+                            b.setTemperature(Integer.parseInt(baseHost[3]));
+                            b.setGpuLoad(Integer.parseInt(baseHost[4]));
+
+                            Intent intent = new Intent();
+                            intent.setAction("udpMsg");
+                            intent.putExtra("udpRcvMsg", b.getAddress() + ":#Telemetry");
+                            mContext.sendBroadcast(intent);
                         }
                     } else if (TextUtils.equals(baseHost[0], "TRIGGER_A")) {
                         int i = Integer.parseInt(baseHost[1]);
@@ -566,6 +508,11 @@ public class MainActivity extends AppCompatActivity {
                             }
                         }
                     }
+
+                    Intent intent = new Intent();
+                    intent.setAction("mcastMsg");
+                    intent.putExtra("mcastRcvMsg", msg);
+                    mContext.sendBroadcast(intent);
                 }
             }
 
@@ -781,27 +728,79 @@ public class MainActivity extends AppCompatActivity {
         super.onDestroy();
     }
 
+    private void onUdpRx(String str) {
+        System.out.println("UDP RX : " + str);
+        int index = str.indexOf(':');
+        String addr = str.substring(0, index);
+        String s = str.substring(index+1);
+        DragonEyeBase b = DragonEyeApplication.getInstance().findBaseByAddress(addr);
+        if(b != null) {
+            if(TextUtils.equals(s, "#Started")) {
+                b.stopResponseTimer();
+                if(b.getStatus() != DragonEyeBase.Status.STARTED) {
+                    b.started();
+                    mListViewAdapter.notifyDataSetChanged();
+                }
+            } else if(TextUtils.equals(s, "#Stopped")) {
+                b.stopResponseTimer();
+                if(b.getStatus() != DragonEyeBase.Status.STOPPED) {
+                    b.stopped();
+                    mListViewAdapter.notifyDataSetChanged();
+                }
+            } else if(s != null) {
+                if (s.startsWith("#SystemSettings")) {
+                    b.stopResponseTimer();
+                    String lines[] = s.split("\\r?\\n");
+                    for (int i = 0; i < lines.length; i++) {
+                        if (lines[i].length() > 0) {
+                            if (lines[i].startsWith("#"))
+                                continue;
+                        }
+                        //System.out.println(i + " " + lines[i]);
+                        String keyValue[] = lines[i].split("=");
+                        if (keyValue.length == 2) {
+                            //System.out.println("[ " + keyValue[0] + " ] = " + keyValue[1]);
+                            if (TextUtils.equals(keyValue[0], "base.type")) {
+                                if (TextUtils.equals(keyValue[1], "A")) {
+                                    b.setTypeBaseA();
+                                } else if (TextUtils.equals(keyValue[1], "B")) {
+                                    b.setTypeBaseB();
+                                }
+                            }
+                        }
+                    }
+                    b.setSystemSettings(s);
+                } else if (s.startsWith("#CameraSettings")) {
+                    b.stopResponseTimer();
+                    b.setCameraSettings(s);
+                } else if(TextUtils.equals(s, "#CompassLock")) {
+                    b.stopResponseTimer();
+                    b.compassLock();
+                    mListViewAdapter.notifyDataSetChanged();
+                } else if(TextUtils.equals(s, "#CompassUnlock")) {
+                    b.stopResponseTimer();
+                    b.compassUnlock();
+                    mListViewAdapter.notifyDataSetChanged();
+                } else if(TextUtils.equals(s, "#Telemetry")) {
+                    b.stopResponseTimer();
+                    mListViewAdapter.notifyDataSetChanged();
+                } else if(TextUtils.equals(s, "#Ack")) {
+                    b.stopResponseTimer();
+                }
+            }
+        }
+    }
+
     private BroadcastReceiver broadcastReceiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
             if(intent.getAction().equals("udpMsg")) {
                 if (intent.hasExtra("udpRcvMsg")) {
-                    Message message = new Message();
-                    message.obj = intent.getStringExtra("udpRcvMsg");
-                    message.what = 1;
-                    //Log.i("主界面Broadcast", "收到" + message.obj.toString());
-                    mHandler.sendMessage(message);
+                    onUdpRx(intent.getStringExtra("udpRcvMsg"));
                 } else if (intent.hasExtra("udpSendMsg")) {
-                    Message message = new Message();
-                    message.obj = intent.getStringExtra("udpSendMsg");
-                    message.what = 2;
-                    //Log.i("主界面Broadcast", "發送" + message.obj.toString());
-                    mHandler.sendMessage(message);
+                    System.out.println("UDP TX : " + intent.getStringExtra("udpSendMsg"));
                 } else if (intent.hasExtra("udpPollTimeout")) {
-                    Message message = new Message();
-                    message.what = 3;
-                    //Log.i("主界面Broadcast","逾時");
-                    mHandler.sendMessage(message);
+                    System.out.println("UDP RX Timeout");
                 }
             } else if(intent.getAction().equals("baseMsg")) {
                 if (intent.hasExtra("baseResponseTimeout")) { // base has no response of UDP request
@@ -815,7 +814,6 @@ public class MainActivity extends AppCompatActivity {
 
     @Override
     protected void onStop() {
-        //System.out.println("R.onStop");
         DragonEyeApplication.getInstance().mTonePlayer.stopPlay();
         super.onStop();
     }
@@ -830,7 +828,7 @@ public class MainActivity extends AppCompatActivity {
     {
         AlertDialog.Builder aboutWindow = new AlertDialog.Builder(this);//creates a new instance of a dialog box
         final String website = "\t https://stevegigijoe.blogspot.com";
-        final String AboutDialogMessage = "\t dragon-eye-rc v0.1.2\n\t All bugs made by Steve Chang \n\t Website for contact :\n";
+        final String AboutDialogMessage = "\t dragon-eye-rc v0.1.3\n\t All bugs made by Steve Chang \n\t Website for contact :\n";
         final TextView tx = new TextView(this);//we create a textview to store the dialog text/contents
         tx.setText(AboutDialogMessage + website);//we set the text/contents
         tx.setAutoLinkMask(RESULT_OK);//to linkify any website or email links

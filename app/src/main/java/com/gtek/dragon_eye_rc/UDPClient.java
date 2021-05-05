@@ -70,6 +70,7 @@ public class UDPClient implements Runnable {
         } catch (UnknownHostException e) {
             Log.i("UDPClient", "Unknown host");
             e.printStackTrace();
+            return null;
         }
 
         packetSend = new DatagramPacket(msgSend.getBytes(), msgSend.getBytes().length, hostAddress, udpPort);
@@ -150,7 +151,7 @@ public class UDPClient implements Runnable {
                 continue;
             
             try {
-                Log.i("udpClient", "UDP监听");
+                //Log.i("udpClient", "UDP监听");
                 socket.setSoTimeout(3000);//设置超时为3s
                 socket.receive(packetRcv);
                 //packetRcv.getAddress().getHostAddress()
@@ -163,10 +164,12 @@ public class UDPClient implements Runnable {
                 mContext.sendBroadcast(intent);
                 Log.i("Rcv", RcvMsg);
             } catch (SocketTimeoutException e) {
+                /*
                 Intent intent = new Intent();
                 intent.setAction("udpMsg");
                 intent.putExtra("udpPollTimeout", 0);
                 mContext.sendBroadcast(intent);
+                */
                 //e.printStackTrace();
             } catch (IOException e) {
                 e.printStackTrace();

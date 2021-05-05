@@ -397,66 +397,51 @@ public class TimerActivity extends AppCompatActivity {
             mRepeatTriggerTick.set(0);
         }
     }
-    
-    private final Handler mHandler = new Handler(Looper.getMainLooper()) {
-        @Override
-        public void handleMessage(Message msg) {
-            super.handleMessage(msg);
-            switch (msg.what) {
-                case 1: // RX
-                    System.out.println("Handler receive : " + msg);
-                    String str = msg.obj.toString();
-                    String baseHost[] = str.split(":");
-                    if (baseHost.length >= 2) {
-                        if (TextUtils.equals(baseHost[0], "TRIGGER_A")) {
-                            int i = Integer.parseInt(baseHost[1]);
-                            if (i != serNoA) {
-                                if(mRepeatTriggerTick.get() == 0) {
-                                    mRepeatTriggerTimer.cancel();
-                                    mRepeatTriggerTimer.start();
-                                    onBaseA();
-                                }
-                                serNoA = i;
-                            }
-                        } else if (TextUtils.equals(baseHost[0], "TRIGGER_B")) {
-                            int i = Integer.parseInt(baseHost[1]);
-                            if(i != serNoB) {
-                                if(mRepeatTriggerTick.get() == 0) {
-                                    mRepeatTriggerTimer.cancel();
-                                    mRepeatTriggerTimer.start();
-                                    onBaseB();
-                                }
-                                serNoB = i;
-                            }
-                        }
+
+    private void onNetwokRx(String str) {
+        String baseHost[] = str.split(":");
+        if (baseHost.length >= 2) {
+            if (TextUtils.equals(baseHost[0], "TRIGGER_A")) {
+                int i = Integer.parseInt(baseHost[1]);
+                if (i != serNoA) {
+                    if(mRepeatTriggerTick.get() == 0) {
+                        mRepeatTriggerTimer.cancel();
+                        mRepeatTriggerTimer.start();
+                        onBaseA();
                     }
-                    break;
-                case 2: // TX
-                    break;
-                case 3: // Timeout
-                    System.out.println("Handler timeout ...");
-                    break;
+                    serNoA = i;
+                }
+            } else if (TextUtils.equals(baseHost[0], "TRIGGER_B")) {
+                int i = Integer.parseInt(baseHost[1]);
+                if(i != serNoB) {
+                    if(mRepeatTriggerTick.get() == 0) {
+                        mRepeatTriggerTimer.cancel();
+                        mRepeatTriggerTimer.start();
+                        onBaseB();
+                    }
+                    serNoB = i;
+                }
             }
         }
-    };
+    }
 
     private BroadcastReceiver broadcastReceiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
-            if (intent.hasExtra("mcastRcvMsg")) {
-                Message message = new Message();
-                message.obj = intent.getStringExtra("mcastRcvMsg");
-                message.what = 1;
-                mHandler.sendMessage(message);
-            } else if(intent.hasExtra("mcastSendMsg")) {
-                Message message = new Message();
-                message.obj = intent.getStringExtra("mcastSendMsg");
-                message.what = 2;
-                mHandler.sendMessage(message);
-            } else if(intent.hasExtra("mcastPollTimeout")) {
-                Message message = new Message();
-                message.what = 3;
-                mHandler.sendMessage(message);
+            if(intent.getAction().equals("udpMsg")) {
+                if (intent.hasExtra("udpRcvMsg")) {
+                    onNetwokRx(intent.getStringExtra("udpRcvMsg"));
+                } else if (intent.hasExtra("udpSendMsg")) {
+                    System.out.println("UDP TX : " + intent.getStringExtra("udpSendMsg"));
+                } else if (intent.hasExtra("udpPollTimeout")) {
+                    System.out.println("UDP RX Timeout");
+                }
+            } else if(intent.getAction().equals("mcastMsg")) {
+                if (intent.hasExtra("mcastRcvMsg")) {
+                    onNetwokRx(intent.getStringExtra("mcastRcvMsg"));
+                } else if (intent.hasExtra("mcastSendMsg")) {
+                } else if (intent.hasExtra("mcastPollTimeout")) {
+                }
             }
         }
     };

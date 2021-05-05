@@ -17,6 +17,9 @@ public class DragonEyeBase {
     private final AtomicBoolean isAlive = new AtomicBoolean(false);
     private int mMulticastReceiveCount = 0;
     private boolean mCompassLocked = false;
+    private int mYaw = 0;
+    private int mTemperature = -40000;
+    private int mGpuLoad = 0;
 
     DragonEyeBase(Context context, String baseType, String address) {
         mContext = context;
@@ -36,7 +39,7 @@ public class DragonEyeBase {
                 int count = 0;
                 while(isAlive.get()) {
                     try {
-                        Thread.sleep(4000);
+                        Thread.sleep(6000);
                         if(count == mMulticastReceiveCount) {
                             offline();
                             Intent intent = new Intent();
@@ -156,9 +159,6 @@ public class DragonEyeBase {
     public void online() { mStatus = Status.ONLINE; }
     public void stopped() { mStatus = Status.STOPPED; }
     public void started() { mStatus = Status.STARTED; }
-    public void compassLock() { mCompassLocked = true; }
-    public void compassUnlock() { mCompassLocked = false; }
-    public boolean isCompassLocked() { return mCompassLocked; }
 
     public void reset() {
         mType = Type.BASE_UNKNOWN;
@@ -179,4 +179,26 @@ public class DragonEyeBase {
     final String getCameraSettings() { return mCameraSettings; }
 
     public void multicastReceived() { mMulticastReceiveCount++; }
+
+    public void compassLock() { mCompassLocked = true; }
+    public void compassUnlock() { mCompassLocked = false; }
+    public boolean isCompassLocked() { return mCompassLocked; }
+
+    public void setYaw(int yaw) {
+        mYaw = yaw;
+    }
+
+    public int yaw() { return mYaw; }
+
+    public void setTemperature(int temp) {
+        mTemperature = temp;
+    }
+
+    public int temperature() { return mTemperature; }
+
+    public void setGpuLoad(int load) {
+        mGpuLoad = load;
+    }
+
+    public int gpuLoad() { return mGpuLoad; }
 }
