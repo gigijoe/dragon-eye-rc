@@ -2,8 +2,10 @@ package com.gtek.dragon_eye_rc;
 
 import androidx.appcompat.app.AppCompatActivity;
 
+import android.app.AlertDialog;
 import android.content.BroadcastReceiver;
 import android.content.Context;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.os.Bundle;
@@ -47,10 +49,45 @@ public class TimerActivity extends AppCompatActivity {
 
     private RepeatTriggerTimer mRepeatTriggerTimer = new RepeatTriggerTimer(1000, 10);
     private AtomicInteger mRepeatTriggerTick = new AtomicInteger(0);
-    
+
+    private final Handler mHandler = new Handler(Looper.getMainLooper()) {
+        @Override
+        public void handleMessage(Message msg) {
+            super.handleMessage(msg);
+            switch (msg.what) {
+                case 1: /* Timeout */
+                    onButtonStop();
+            }
+        }
+    };
+
+    private void exitDialog() {
+        AlertDialog.Builder MyAlertDialog = new AlertDialog.Builder(this);
+        MyAlertDialog.setTitle("Exit F3F Timer");
+        MyAlertDialog.setMessage("Are you sure ?");
+        MyAlertDialog.setPositiveButton("Yes", new DialogInterface.OnClickListener() {
+            @Override
+            public void onClick(DialogInterface dialogInterface, int i) {
+                finish();
+            }
+        });
+        MyAlertDialog.setNegativeButton("No", new DialogInterface.OnClickListener() {
+            @Override
+            public void onClick(DialogInterface dialogInterface, int i) {
+            }
+        });
+        MyAlertDialog.show();
+    }
+
+    @Override
+    public void onBackPressed() {
+        exitDialog();
+    }
+
     private void onButtonStart() {
         if(mTimerState == idleState) {
             DragonEyeApplication.getInstance().playPriorityTone(R.raw.r_go);
+            stopTimer();
             mTimerState = thirtySecondState;
             mCountDownSecond = 30;
             mThirtySecondTimer.start();
@@ -61,23 +98,21 @@ public class TimerActivity extends AppCompatActivity {
     }
 
     private void onButtonStop() {
-        if(mTimerState != idleState) {
-            if(mTimerState == thirtySecondState) {
-                DragonEyeApplication.getInstance().playPriorityTone(R.raw.smb_die);
-                mThirtySecondTimer.cancel();
-                mTimerState = finishState;
-                mTextViewTimerStatus.setText("Cancelled !!!");
-            } else if(mTimerState == speedCourseState) {
-                DragonEyeApplication.getInstance().playPriorityTone(R.raw.smb_die);
-                stopTimer();
-                mTimerState = finishState;
-                mTextViewTimerStatus.setText("Cancelled !!!");
-            } else if(mTimerState == finishState) {
-                mTextViewDuration.setText("0.00");
-                mTextViewTimerStatus.setText("Press Start ...");
-                mTimerState = idleState;
-                DragonEyeApplication.getInstance().stopTone();
-            }
+        if(mTimerState == thirtySecondState) {
+            DragonEyeApplication.getInstance().playPriorityTone(R.raw.smb_die);
+            mThirtySecondTimer.cancel();
+            mTimerState = finishState;
+            mTextViewTimerStatus.setText("Cancelled !!!");
+        } else if(mTimerState == speedCourseState) {
+            DragonEyeApplication.getInstance().playPriorityTone(R.raw.smb_die);
+            stopTimer();
+            mTimerState = finishState;
+            mTextViewTimerStatus.setText("Cancelled !!!");
+        } else if(mTimerState == finishState) {
+            mTextViewDuration.setText("0.00");
+            mTextViewTimerStatus.setText("Press Start ...");
+            mTimerState = idleState;
+            DragonEyeApplication.getInstance().stopTone();
         }
     }
 
@@ -85,14 +120,14 @@ public class TimerActivity extends AppCompatActivity {
         if(mTimerState == thirtySecondState) {
             if(mOutside == false) { // Outside
                 mOutside = true;
-                System.out.println("mCourseCount.get() = " + mCourseCount.get());
+                //System.out.println("mCourseCount.get() = " + mCourseCount.get());
                 DragonEyeApplication.getInstance().playPriorityTone(R.raw.r_outside);
                 mTextViewTimerStatus.setText("Outside !!!");
             } else { // Enter speed course
                 mThirtySecondTimer.cancel();
                 mTimerState = speedCourseState;
                 mCourseCount.incrementAndGet();
-                System.out.println("mCourseCount.get() = " + mCourseCount.get());
+                //System.out.println("mCourseCount.get() = " + mCourseCount.get());
                 startTimer();
                 DragonEyeApplication.getInstance().playPriorityTone(R.raw.r_a);
                 mTextViewTimerStatus.setText("Course " + mCourseCount.get());
@@ -100,7 +135,7 @@ public class TimerActivity extends AppCompatActivity {
         } else if(mTimerState == speedCourseState) {
             if(mOutside == false) { // Outside
                 mOutside = true;
-                System.out.println("mCourseCount.get() = " + mCourseCount.get());
+                //System.out.println("mCourseCount.get() = " + mCourseCount.get());
                 DragonEyeApplication.getInstance().playPriorityTone(R.raw.r_outside);
                 mTextViewTimerStatus.setText("Outside !!!");
             } else {
@@ -108,7 +143,7 @@ public class TimerActivity extends AppCompatActivity {
                     return;
 
                 mCourseCount.incrementAndGet();
-                System.out.println("mCourseCount.get() = " + mCourseCount.get());
+                //System.out.println("mCourseCount.get() = " + mCourseCount.get());
 
                 if (mCourseCount.get() < 10) {
                     DragonEyeApplication.getInstance().playPriorityTone(R.raw.r_a);
@@ -119,7 +154,7 @@ public class TimerActivity extends AppCompatActivity {
 
                     mTextViewTimerStatus.setText("Finished ...");
 
-                    if(mCount >= 20000) // 200 secs
+                    if(mCount >= 20000) // Over 200 secs, do not play voice
                         return;
 
                     Thread thread = new Thread(new Runnable() {
@@ -204,7 +239,7 @@ public class TimerActivity extends AppCompatActivity {
                 if(mCourseCount.get() == -1 || mCourseCount.get() % 2 == 1)
                     return;
                 mCourseCount.incrementAndGet();
-                System.out.println("mCourseCount.get() = " + mCourseCount.get());
+                //System.out.println("mCourseCount.get() = " + mCourseCount.get());
                 mTextViewTimerStatus.setText("Course " + mCourseCount.get());
                 if(mCourseCount.get() < 9)
                     DragonEyeApplication.getInstance().playPriorityTone(R.raw.r_b);
@@ -213,7 +248,7 @@ public class TimerActivity extends AppCompatActivity {
             }
         } else if(mTimerState == finishState) { // Restart game
             mTimerState = idleState;
-            System.out.println("mCourseCount.get() = " + mCourseCount.get());
+            //System.out.println("mCourseCount.get() = " + mCourseCount.get());
             mTextViewTimerStatus.setText("Thirty seconds ...");
             onButtonStart();
         }
@@ -305,6 +340,9 @@ public class TimerActivity extends AppCompatActivity {
 
     @Override
     protected void onDestroy() {
+        mRepeatTriggerTimer.cancel();
+        mThirtySecondTimer.cancel();
+        stopTimer();
         DragonEyeApplication.getInstance().stopTone();
         unregisterReceiver(broadcastReceiver);
         super.onDestroy();
@@ -314,8 +352,14 @@ public class TimerActivity extends AppCompatActivity {
     {
         //This method is called directly by the timer
         //and runs in the same thread as the timer.
-
         mCount++;
+
+        if(mCount >= 20000) { /* 200 seconds timeout */
+            Message message = new Message();
+            message.obj = "timeout";
+            message.what = 1;
+            mHandler.sendMessage(message);
+        }
         //We call the method that will work with the UI
         //through the runOnUiThread method.
         this.runOnUiThread(Timer_Tick);
@@ -323,12 +367,9 @@ public class TimerActivity extends AppCompatActivity {
 
     private Runnable Timer_Tick = new Runnable() {
         public void run() {
-
             //This method runs in the same thread as the UI.
-
             //Do something to the UI thread here
             float duration = (float)mCount / 100;
-            //mTextViewDuration.setText(Float.toString(duration));
             mTextViewDuration.setText(String.format("%.2f", duration));
         }
     };
