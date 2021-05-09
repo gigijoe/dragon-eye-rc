@@ -165,6 +165,24 @@ public class DragonEyeApplication extends Application {
         b.startResponseTimer();
     }
 
+    public void requestCompassSaveSettings(DragonEyeBase b) {
+        final String payloadString = "#CompassSaveSettings";
+        mUdpClient.send(b.getAddress(), DragonEyeBase.UDP_REMOTE_PORT, payloadString);
+        b.startResponseTimer();
+    }
+
+    public void requestCompassSuspend(DragonEyeBase b) {
+        final String payloadString = "#CompassSuspend";
+        mUdpClient.send(b.getAddress(), DragonEyeBase.UDP_REMOTE_PORT, payloadString);
+        b.startResponseTimer();
+    }
+
+    public void requestCompassResume(DragonEyeBase b) {
+        final String payloadString = "#CompassResume";
+        mUdpClient.send(b.getAddress(), DragonEyeBase.UDP_REMOTE_PORT, payloadString);
+        b.startResponseTimer();
+    }
+
     @Override
     public void onCreate() {
         super.onCreate();

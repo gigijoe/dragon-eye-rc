@@ -102,6 +102,30 @@ public class MainActivity extends AppCompatActivity {
 
     private boolean isPaused = false;
 
+    private void compassCalibrationDialog(DragonEyeBase b) {
+        AlertDialog.Builder MyAlertDialog = new AlertDialog.Builder(this);
+        MyAlertDialog.setTitle("Compass Calibration");
+        MyAlertDialog.setMessage("Are you sure ?");
+        MyAlertDialog.setPositiveButton("Yes", new DialogInterface.OnClickListener() {
+            @Override
+            public void onClick(DialogInterface dialogInterface, int i) {
+                Thread thread = new Thread(new Runnable() {
+                    @Override
+                    public void run() {
+                        DragonEyeApplication.getInstance().requestCompassLock(b);
+                    }
+                });
+                thread.start();
+            }
+        });
+        MyAlertDialog.setNegativeButton("No", new DialogInterface.OnClickListener() {
+            @Override
+            public void onClick(DialogInterface dialogInterface, int i) {
+            }
+        });
+        MyAlertDialog.show();
+    }
+
     public class ListViewAdapter extends ArrayAdapter<DragonEyeBase> implements View.OnClickListener {
 
         private ArrayList<DragonEyeBase> mBaseList;
@@ -135,16 +159,24 @@ public class MainActivity extends AppCompatActivity {
             switch (v.getId())
             {
                 case R.id.iv_explore: System.out.println("iv_explore OnClick...");
-                    Thread thread = new Thread(new Runnable() {
-                        @Override
-                        public void run() {
-                            if(b.isCompassLocked())
+                    if(b.getStatus() == DragonEyeBase.Status.OFFLINE || b.getStatus() == DragonEyeBase.Status.STARTED)
+                        break;
+                    if(b.isCompassLocked()) {
+                        Thread thread = new Thread(new Runnable() {
+                            @Override
+                            public void run() {
                                 DragonEyeApplication.getInstance().requestCompassUnlock(b);
-                            else
-                                DragonEyeApplication.getInstance().requestCompassLock(b);
-                       }
-                    });
-                    thread.start();
+                                DragonEyeApplication.getInstance().requestCompassSaveSettings(b);
+                            }
+                        });
+                        thread.start();
+                    } else {
+                        compassCalibrationDialog(b);
+                    }
+                    /*
+                    Intent i = new Intent(getApplicationContext(), CompassActivity.class);
+                    startActivity(i);
+                    */
                     break;
                 case R.id.iv_system_settings: System.out.println("iv_system_settings OnClick...");
                     if(b.getStatus() == DragonEyeBase.Status.OFFLINE || b.getStatus() == DragonEyeBase.Status.STARTED)
@@ -227,7 +259,7 @@ public class MainActivity extends AppCompatActivity {
             viewHolder.imgCompassCalibration.setTag(position);
             switch(base.getStatus()) {
                 case OFFLINE:
-                    viewHolder.imgCompassCalibration.setColorFilter(Color.parseColor("#D3D3D3")); /* grey */
+                case STARTED: viewHolder.imgCompassCalibration.setColorFilter(Color.parseColor("#D3D3D3")); /* grey */
                     break;
                 default:
                     if(base.isCompassLocked())
