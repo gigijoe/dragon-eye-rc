@@ -61,6 +61,7 @@ import com.google.android.material.floatingactionbutton.FloatingActionButton;
 
 import org.w3c.dom.Text;
 
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.math.BigInteger;
@@ -79,6 +80,8 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Enumeration;
 import java.util.concurrent.atomic.AtomicBoolean;
+
+import static android.Manifest.permission.WRITE_EXTERNAL_STORAGE;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -101,6 +104,8 @@ public class MainActivity extends AppCompatActivity {
     public MulticastThread mMulticastThread3 = null;
 
     private boolean isPaused = false;
+
+    private HttpServer mHttpd;
 
     private void compassCalibrationDialog(DragonEyeBase b) {
         AlertDialog.Builder MyAlertDialog = new AlertDialog.Builder(this);
@@ -715,6 +720,53 @@ public class MainActivity extends AppCompatActivity {
         DragonEyeApplication.getInstance().addBase(new DragonEyeBase("BASE_B", "192.168.0.1"));
         DragonEyeApplication.getInstance().addBase(new DragonEyeBase("BASE_A", "192.168.168.1"));
 */
+        mHttpd = new HttpServer(8080);
+        mHttpd.setOnStatusUpdateListener(new HttpServer.OnStatusUpdateListener() {
+            @Override
+            public void onUploadingProgressUpdate(final int progress) {
+                MainActivity.this.runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        //mProgressBar.setProgress(progress);
+                    }
+                });
+            }
+
+            @Override
+            public void onUploadingFile(final File file, final boolean done) {
+                MainActivity.this.runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        if (done) {
+                            //mUploadInfo.setText("Upload file " + file.getName() + " done!");
+                        } else {
+                            //mProgressBar.setProgress(0);
+                            //mUploadInfo.setText("Uploading file " + file.getName() + "...");
+                        }
+                    }
+                });
+            }
+
+            @Override
+            public void onDownloadingFile(final File file, final boolean done) {
+                MainActivity.this.runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        if (done) {
+                            //mDownloadInfo.setText("Download file " + file.getName() + " done!") ;
+                        } else {
+                            //mDownloadInfo.setText("Downloading file " + file.getName() + " ...");
+                        }
+                    }
+                });
+            }
+        });
+
+        try {
+            mHttpd.start();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 
     @Override
@@ -757,6 +809,7 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onDestroy() {
         unregisterReceiver(broadcastReceiver);
+        mHttpd.stop();
         super.onDestroy();
     }
 
@@ -899,12 +952,16 @@ public class MainActivity extends AppCompatActivity {
     protected void checkPermission(){
         if(ContextCompat.checkSelfPermission(mActivity, Manifest.permission.INTERNET) != PackageManager.PERMISSION_GRANTED
                 ||  ContextCompat.checkSelfPermission(mActivity,Manifest.permission.ACCESS_WIFI_STATE) != PackageManager.PERMISSION_GRANTED
-                ||  ContextCompat.checkSelfPermission(mActivity,Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+                ||  ContextCompat.checkSelfPermission(mActivity,Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED
+                ||  ContextCompat.checkSelfPermission(mActivity, Manifest.permission.READ_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED
+                ||  ContextCompat.checkSelfPermission(mActivity, Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
 
             // Do something, when permissions not granted
             if(ActivityCompat.shouldShowRequestPermissionRationale(mActivity,Manifest.permission.INTERNET)
                     || ActivityCompat.shouldShowRequestPermissionRationale(mActivity,Manifest.permission.ACCESS_WIFI_STATE)
-                    || ActivityCompat.shouldShowRequestPermissionRationale(mActivity,Manifest.permission.ACCESS_FINE_LOCATION)){
+                    || ActivityCompat.shouldShowRequestPermissionRationale(mActivity,Manifest.permission.ACCESS_FINE_LOCATION)
+                    || ActivityCompat.shouldShowRequestPermissionRationale(mActivity, Manifest.permission.READ_EXTERNAL_STORAGE)
+                    || ActivityCompat.shouldShowRequestPermissionRationale(mActivity, Manifest.permission.WRITE_EXTERNAL_STORAGE)){
                 // If we should give explanation of requested permissions
 
                 // Show an alert dialog here with request explanation
@@ -920,6 +977,8 @@ public class MainActivity extends AppCompatActivity {
                                         Manifest.permission.INTERNET,
                                         Manifest.permission.ACCESS_WIFI_STATE,
                                         Manifest.permission.ACCESS_FINE_LOCATION,
+                                        Manifest.permission.READ_EXTERNAL_STORAGE,
+                                        Manifest.permission.WRITE_EXTERNAL_STORAGE,
                                 },
                                 MY_PERMISSIONS_REQUEST_CODE
                         );
@@ -936,6 +995,8 @@ public class MainActivity extends AppCompatActivity {
                                 Manifest.permission.INTERNET,
                                 Manifest.permission.ACCESS_WIFI_STATE,
                                 Manifest.permission.ACCESS_FINE_LOCATION,
+                                Manifest.permission.READ_EXTERNAL_STORAGE,
+                                Manifest.permission.WRITE_EXTERNAL_STORAGE,
                         },
                         MY_PERMISSIONS_REQUEST_CODE
                 );
@@ -955,6 +1016,8 @@ public class MainActivity extends AppCompatActivity {
                                 (grantResults[0]
                                         + grantResults[1]
                                         + grantResults[2]
+                                        + grantResults[3]
+                                        + grantResults[4]
                                         == PackageManager.PERMISSION_GRANTED
                                 )
                 ){
