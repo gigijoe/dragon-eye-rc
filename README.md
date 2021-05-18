@@ -1,7 +1,7 @@
 # dragon-eye-rc
 Android APP for dragon-eye remote control 
 
-![Alt text](Screenshot_20210130-165657.png?raw=true "Main screen"){:height="250"}
+<img src="file://Screenshot_20210130-165657.png" width="250">
 
 ![Alt text](Screenshot_20210130-165703.png?raw=true "System config"){:height="50%" width="50%"}
 
