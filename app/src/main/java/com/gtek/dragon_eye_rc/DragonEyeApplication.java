@@ -33,7 +33,7 @@ public class DragonEyeApplication extends Application {
 
     public TonePlayer mTonePlayer = null;
     private final AtomicBoolean isPriorityPlaying = new AtomicBoolean(false);
-    ArrayList<Integer> toneArray = null;
+    ArrayList<Integer> mToneArray = null;
 
     public void playTone(int resourceId) {
         if(mTonePlayer.isPlaying()) {
@@ -53,8 +53,8 @@ public class DragonEyeApplication extends Application {
     public void playPriorityTone(int resourceId) {
         if(mTonePlayer.isPlaying()) {
             mTonePlayer.stopPlay();
-           if(toneArray != null)
-               toneArray.clear();
+           if(mToneArray != null)
+               mToneArray.clear();
         }
 
         isPriorityPlaying.set(true);
@@ -65,12 +65,14 @@ public class DragonEyeApplication extends Application {
     }
 
     public void playTone(ArrayList<Integer> a) {
-        toneArray = a;
+        mToneArray = a;
         Thread thread = new Thread(new Runnable() {
             @Override
             public void run() {
-                for(int tone : a) {
-                    mTonePlayer.startPlay(tone);
+                //for(int tone : a) {
+                for(int i=0;i<mToneArray.size();i++) {
+                    //mTonePlayer.startPlay(tone);
+                    mTonePlayer.startPlay(mToneArray.get(i));
                     Thread t = new Thread(mTonePlayer);
                     t.start();
 
@@ -84,7 +86,8 @@ public class DragonEyeApplication extends Application {
                     if(mTonePlayer.interrupt.get())
                         break;
                 }
-                toneArray = null;
+                mToneArray.clear();
+                //mToneArray = null;
             }
         });
         thread.start();
@@ -93,8 +96,8 @@ public class DragonEyeApplication extends Application {
     public void stopTone() {
         if(mTonePlayer.isPlaying()) {
             mTonePlayer.stopPlay();
-            if(toneArray != null)
-                toneArray.clear();
+            if(mToneArray != null)
+                mToneArray.clear();
         }
     }
 

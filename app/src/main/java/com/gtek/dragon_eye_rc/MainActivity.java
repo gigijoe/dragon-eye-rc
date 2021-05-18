@@ -913,7 +913,7 @@ public class MainActivity extends AppCompatActivity {
     {
         AlertDialog.Builder aboutWindow = new AlertDialog.Builder(this);//creates a new instance of a dialog box
         final String website = "\t https://stevegigijoe.blogspot.com";
-        final String AboutDialogMessage = "\t dragon-eye-rc v0.1.3\n\t All bugs made by Steve Chang \n\t Website for contact :\n";
+        final String AboutDialogMessage = "\t dragon-eye-rc v0.1.4\n\t All bugs made by Steve Chang \n\t Website for contact :\n";
         final TextView tx = new TextView(this);//we create a textview to store the dialog text/contents
         tx.setText(AboutDialogMessage + website);//we set the text/contents
         tx.setAutoLinkMask(RESULT_OK);//to linkify any website or email links
