@@ -190,6 +190,8 @@ public class TimerActivity extends AppCompatActivity {
                             DragonEyeApplication.getInstance().playTone(toneArray);
                             if(mCount < 3000) // Less than 30 seconds
                                 toneArray.add(R.raw.smb_world_clear);
+                            else if(mCount < 4000) // Less than 40 seconds
+                                toneArray.add(R.raw.smb_stage_clear);
                         }
                     });
                     thread.start();

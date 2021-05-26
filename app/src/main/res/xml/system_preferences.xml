@@ -46,4 +46,16 @@
             android:key="show_result"
             android:title="Show Result" />
     </PreferenceCategory>
+    <PreferenceCategory android:title="Information">
+    <Preference
+        android:key="firmware_version"
+        android:title="Firmware Version"
+        android:summary="Unknown" >
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:targetPackage="com.gtek.dragon_eye_rc"
+            android:targetClass="com.gtek.dragon_eye_rc.FirmwareActivity" />
+    </Preference>
+    </PreferenceCategory>
+
 </PreferenceScreen>

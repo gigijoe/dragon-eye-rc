@@ -145,6 +145,7 @@ public class DragonEyeBase {
     private String mAddress;
     private String mSystemSettings;
     private String mCameraSettings;
+    private String mFirmwareVersion;
 
     public Type getType() { return mType; }
     public void setTypeBaseA() { mType = Type.BASE_A; }
@@ -166,6 +167,7 @@ public class DragonEyeBase {
         mAddress = "";
         mSystemSettings = "";
         mCameraSettings = "";
+        mFirmwareVersion = "";
     }
 
     public void destroy() {
@@ -174,9 +176,11 @@ public class DragonEyeBase {
 
     public void setSystemSettings(String s) { mSystemSettings = s; }
     public void setCameraSettings(String s) { mCameraSettings = s; }
+    public void setFirmwareVersion(String s) { mFirmwareVersion = s; }
 
     final String getSystemSettings() { return mSystemSettings; }
     final String getCameraSettings() { return mCameraSettings; }
+    final String getFirmwareVersion() { return mFirmwareVersion; }
 
     public void multicastReceived() { mMulticastReceiveCount++; }
 

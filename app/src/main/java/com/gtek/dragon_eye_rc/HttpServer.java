@@ -1,6 +1,8 @@
 package com.gtek.dragon_eye_rc;
 
+import android.content.Context;
 import android.os.Environment;
+import android.text.TextUtils;
 import android.util.Log;
 
 import org.apache.commons.fileupload.FileItemIterator;
@@ -13,6 +15,7 @@ import com.gtek.dragon_eye_rc.NanoFileUpload;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
+import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.Map;
@@ -23,36 +26,42 @@ import fi.iki.elonen.NanoHTTPD;
  * Created by wangmingxing on 2017/6/20.
  */
 
+/*
+* https://github.com/mason-Wang/android-httpserver
+*/
+
 public class HttpServer extends NanoHTTPD {
     private static final String TAG = "HttpServer";
     private NanoFileUpload mFileUpload;
     private OnStatusUpdateListener mStatusUpdateListener;
+    private Context mContext;
 
     interface OnStatusUpdateListener {
         void onUploadingProgressUpdate(int progress);
         void onUploadingFile(File file, boolean done);
-        void onDownloadingFile(File file, boolean done);
+        void onDownloadingFile(boolean done);
     }
 
     class DownloadResponse extends Response {
-        private File downloadFile;
-
-        DownloadResponse(File downloadFile, InputStream stream) {
-            super(Response.Status.OK, "application/octet-stream", stream, downloadFile.length());
-            this.downloadFile = downloadFile;
+        DownloadResponse(InputStream stream) throws IOException {
+            super(Response.Status.OK,
+                    "application/octet-stream",
+                    stream,
+                    stream.available());
         }
 
         @Override
         protected void send(OutputStream outputStream) {
             super.send(outputStream);
             if (mStatusUpdateListener != null) {
-                mStatusUpdateListener.onDownloadingFile(downloadFile, true);
+                mStatusUpdateListener.onDownloadingFile(true);
             }
         }
     }
 
-    public HttpServer(int port) {
+    public HttpServer(Context context, int port) {
         super(port);
+        mContext = context;
         mFileUpload = new NanoFileUpload(new DiskFileItemFactory());
         mFileUpload.setProgressListener(new ProgressListener() {
             int progress = 0;
@@ -73,100 +82,44 @@ public class HttpServer extends NanoHTTPD {
     @Override
     public Response serve(IHTTPSession session) {
         String uri = session.getUri();
-        Method method = session.getMethod();
-        Map<String, String> header = session.getHeaders();
-        Map<String, String> parms = session.getParms();
-        String answer = "Success!";
-        Log.d(TAG, "uri=" + uri);
-        Log.d(TAG, "method=" + method);
-        Log.d(TAG, "header=" + header);
-        Log.d(TAG, "params=" + parms);
 
-        // for file upload
         if (NanoFileUpload.isMultipartContent(session)) {
-            try {
-                FileItemIterator iterator = mFileUpload.getItemIterator(session);
-                while (iterator.hasNext()) {
-                    FileItemStream item = iterator.next();
-                    String name = item.getFieldName();
-                    InputStream inputStream = item.openStream();
-                    if (item.isFormField()) {
-                        Log.d(TAG, "Item is form filed, name=" +
-                                name + ",value=" + Streams.asString(inputStream));
-                    } else {
-                        String fileName = item.getName();
-                        Log.d(TAG, "Item is file field, name=" + name + ",fileName=" + fileName);
+            return newFixedLengthResponse(Response.Status.NOT_IMPLEMENTED, NanoHTTPD.MIME_HTML, "Upload is NOT support !!!");
+        } else {
+            String[] s = uri.split("/");
 
-                        File file = new File(Environment.getExternalStoragePublicDirectory(
-                                Environment.DIRECTORY_DOWNLOADS), fileName);
-                        String path = file.getAbsolutePath();
-                        Log.d(TAG, "Save file to " + path);
-                        if (mStatusUpdateListener != null) {
-                            mStatusUpdateListener.onUploadingFile(file, false);
-                        }
-
-                        FileOutputStream fos = new FileOutputStream(file);
-                        Streams.copy(inputStream, fos, true);
-                        if (mStatusUpdateListener != null) {
-                            mStatusUpdateListener.onUploadingFile(file, true);
-                        }
-                    }
-                }
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
-        } else if (method.equals(Method.GET)) {
-            // for file browse and download
-            File rootFile = Environment.getExternalStorageDirectory();
-            uri = uri.replace(rootFile.getAbsolutePath(), "");
-            rootFile = new File(rootFile + uri);
-            if (!rootFile.exists()) {
-                return newFixedLengthResponse("Error! No such file or dirctory");
+            if(s.length < 1) {
+                return newFixedLengthResponse(Response.Status.NOT_FOUND, NanoHTTPD.MIME_HTML, "File NOT found !!!");
             }
 
-            if (rootFile.isDirectory()) {
-                // list directory files
-                Log.d(TAG, "list " + rootFile.getPath());
-                File[] files = rootFile.listFiles();
-                answer = "<html><head><meta http-equiv=\"Content-Type\" content=\"text/html; " +
-                        "charset=utf-8\"><title> HTTP File Browser</title>";
+            String filename = s[s.length - 1];
+            // serve file download
+            Response response = null;
 
-                for (File file : files) {
-                    answer += "<a href=\"" + file.getAbsolutePath()
-                            + "\" alt = \"\">" + file.getAbsolutePath()
-                            + "</a><br>";
-                }
-
-                answer += "</head></html>";
-            } else {
-                // serve file download
-                InputStream inputStream;
-                Response response = null;
-                Log.d(TAG, "downloading file " + rootFile.getAbsolutePath());
+            if(TextUtils.equals(filename, "firmware.img")) {
                 if (mStatusUpdateListener != null) {
-                    mStatusUpdateListener.onDownloadingFile(rootFile, false);
+                    mStatusUpdateListener.onDownloadingFile(false);
                 }
 
                 try {
-                    inputStream = new FileInputStream(rootFile);
-                    response = new DownloadResponse(rootFile, inputStream);
+                    InputStream is = mContext.getResources().openRawResource(R.raw.firmware);
+                    response = new DownloadResponse(is);
                 } catch (Exception e) {
                     e.printStackTrace();
                 }
 
                 if (response != null) {
                     response.addHeader(
-                            "Content-Disposition", "attachment; filename=" + rootFile.getName());
+                            "Content-Disposition", "attachment; filename=" + filename);
                     return response;
                 } else {
-                    return newFixedLengthResponse("Error downloading file!");
+                    return newFixedLengthResponse(Response.Status.INTERNAL_ERROR, NanoHTTPD.MIME_HTML, "Internal error !!!");
                 }
+            } else {
+                return newFixedLengthResponse(Response.Status.NOT_FOUND, NanoHTTPD.MIME_HTML, "File NOT found !!!");
             }
         }
-
-        return newFixedLengthResponse(answer);
     }
-
 
     public void setOnStatusUpdateListener(OnStatusUpdateListener listener) {
         mStatusUpdateListener = listener;

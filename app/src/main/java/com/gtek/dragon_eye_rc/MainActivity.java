@@ -105,8 +105,6 @@ public class MainActivity extends AppCompatActivity {
 
     private boolean isPaused = false;
 
-    private HttpServer mHttpd;
-
     private void compassCalibrationDialog(DragonEyeBase b) {
         AlertDialog.Builder MyAlertDialog = new AlertDialog.Builder(this);
         MyAlertDialog.setTitle("Compass Calibration");
@@ -506,6 +504,7 @@ public class MainActivity extends AppCompatActivity {
                             DragonEyeApplication.getInstance().requestSystemSettings(b);
                             DragonEyeApplication.getInstance().requestCameraSettings(b);
                             DragonEyeApplication.getInstance().requestStatus(b);
+                            DragonEyeApplication.getInstance().requestFirmwareVersion(b);
                         } else { /* Base exist ... */
                             b.multicastReceived();
                             if(b.getStatus() == DragonEyeBase.Status.OFFLINE) {
@@ -513,6 +512,7 @@ public class MainActivity extends AppCompatActivity {
                                 DragonEyeApplication.getInstance().requestSystemSettings(b);
                                 DragonEyeApplication.getInstance().requestCameraSettings(b);
                                 DragonEyeApplication.getInstance().requestStatus(b);
+                                DragonEyeApplication.getInstance().requestFirmwareVersion(b);
                             }
                         }
 
@@ -531,7 +531,7 @@ public class MainActivity extends AppCompatActivity {
                         if (i != serNoA) {
                             if(!isPaused) {
                                 System.out.println("Play tone ...");
-                                DragonEyeApplication.getInstance().playTone(R.raw.r_a);
+                                DragonEyeApplication.getInstance().playTone(R.raw.smb_jump_small); // R.raw.r_a
                                 serNoA = i;
                             }
                         }
@@ -540,7 +540,7 @@ public class MainActivity extends AppCompatActivity {
                         if (i != serNoB) {
                             if(!isPaused) {
                                 System.out.println("Play tone ...");
-                                DragonEyeApplication.getInstance().playTone(R.raw.r_b);
+                                DragonEyeApplication.getInstance().playTone(R.raw.smb_jump_super); // R.raw.r_b
                                 serNoB = i;
                             }
                         }
@@ -720,53 +720,6 @@ public class MainActivity extends AppCompatActivity {
         DragonEyeApplication.getInstance().addBase(new DragonEyeBase("BASE_B", "192.168.0.1"));
         DragonEyeApplication.getInstance().addBase(new DragonEyeBase("BASE_A", "192.168.168.1"));
 */
-        mHttpd = new HttpServer(8080);
-        mHttpd.setOnStatusUpdateListener(new HttpServer.OnStatusUpdateListener() {
-            @Override
-            public void onUploadingProgressUpdate(final int progress) {
-                MainActivity.this.runOnUiThread(new Runnable() {
-                    @Override
-                    public void run() {
-                        //mProgressBar.setProgress(progress);
-                    }
-                });
-            }
-
-            @Override
-            public void onUploadingFile(final File file, final boolean done) {
-                MainActivity.this.runOnUiThread(new Runnable() {
-                    @Override
-                    public void run() {
-                        if (done) {
-                            //mUploadInfo.setText("Upload file " + file.getName() + " done!");
-                        } else {
-                            //mProgressBar.setProgress(0);
-                            //mUploadInfo.setText("Uploading file " + file.getName() + "...");
-                        }
-                    }
-                });
-            }
-
-            @Override
-            public void onDownloadingFile(final File file, final boolean done) {
-                MainActivity.this.runOnUiThread(new Runnable() {
-                    @Override
-                    public void run() {
-                        if (done) {
-                            //mDownloadInfo.setText("Download file " + file.getName() + " done!") ;
-                        } else {
-                            //mDownloadInfo.setText("Downloading file " + file.getName() + " ...");
-                        }
-                    }
-                });
-            }
-        });
-
-        try {
-            mHttpd.start();
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
     }
 
     @Override
@@ -809,7 +762,6 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onDestroy() {
         unregisterReceiver(broadcastReceiver);
-        mHttpd.stop();
         super.onDestroy();
     }
 
@@ -858,6 +810,12 @@ public class MainActivity extends AppCompatActivity {
                 } else if (s.startsWith("#CameraSettings")) {
                     b.stopResponseTimer();
                     b.setCameraSettings(s);
+                } else if (s.startsWith("#FirmwareVersion")) {
+                    String ss[] = s.split(":");
+                    if (ss.length >= 2) {
+                        b.stopResponseTimer();
+                        b.setFirmwareVersion(ss[1]);
+                    }
                 } else if(TextUtils.equals(s, "#CompassLock")) {
                     b.stopResponseTimer();
                     b.compassLock();
@@ -913,7 +871,8 @@ public class MainActivity extends AppCompatActivity {
     {
         AlertDialog.Builder aboutWindow = new AlertDialog.Builder(this);//creates a new instance of a dialog box
         final String website = "\t https://stevegigijoe.blogspot.com";
-        final String AboutDialogMessage = "\t dragon-eye-rc v0.1.4\n\t All bugs made by Steve Chang \n\t Website for contact :\n";
+        String version = getResources().getString(R.string.version);
+        final String AboutDialogMessage = "\t dragon-eye-rc " + version + "\n\t All bugs made by Steve Chang \n\t Website for contact :\n";
         final TextView tx = new TextView(this);//we create a textview to store the dialog text/contents
         tx.setText(AboutDialogMessage + website);//we set the text/contents
         tx.setAutoLinkMask(RESULT_OK);//to linkify any website or email links

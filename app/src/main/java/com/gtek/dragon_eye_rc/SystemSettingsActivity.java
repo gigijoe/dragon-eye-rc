@@ -19,6 +19,7 @@ import androidx.appcompat.app.ActionBar;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
+import androidx.preference.Preference;
 import androidx.preference.PreferenceFragmentCompat;
 import androidx.preference.PreferenceManager;
 
@@ -37,10 +38,6 @@ public class SystemSettingsActivity extends AppCompatActivity {
             super.handleMessage(msg);
             switch (msg.what) {
                 case 1: /* RX */
-                    //udpRcvStrBuf.append(msg.obj.toString());
-                    //txt_Recv.setText(udpRcvStrBuf.toString());
-                    //System.out.println("UDP RX : " + msg.obj.toString());
-                    //String s = msg.obj.toString();
                     String str = msg.obj.toString();
                     System.out.println("UDP RX : " + str);
                     int index = str.indexOf(':');
@@ -51,13 +48,9 @@ public class SystemSettingsActivity extends AppCompatActivity {
                     }
                     break;
                 case 2: /* TX */
-                    //udpSendStrBuf.append(msg.obj.toString());
-                    //txt_Send.setText(udpSendStrBuf.toString());
                     System.out.println("UDP TX : " + msg.obj.toString());
-                    //Toast.makeText(mContext,"UDP TX.",Toast.LENGTH_SHORT).show();
                     break;
                 case 3: /* Timeout */
-                    //txt_Recv.setText(udpRcvStrBuf.toString());
                     System.out.println("UDP RX Timeout");
                     break;
             }
@@ -102,6 +95,10 @@ public class SystemSettingsActivity extends AppCompatActivity {
                 SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(mContext);
                 SharedPreferences.Editor editor = sp.edit();
                 editor.putString("video_output", "off");
+
+                //System.out.println("firmware_version is " + b.getFirmwareVersion());
+
+                //editor.putString("firmware_version", b.getFirmwareVersion());
 
                 String lines[] = s.split("\\r?\\n");
                 for (int i = 0; i < lines.length; i++) {
@@ -327,6 +324,17 @@ public class SystemSettingsActivity extends AppCompatActivity {
         @Override
         public void onCreatePreferences(Bundle savedInstanceState, String rootKey) {
             setPreferencesFromResource(R.xml.system_preferences, rootKey);
+        }
+
+        @Override
+        public void onResume() {
+            super.onResume();
+
+            Preference p = findPreference("firmware_version");
+            if(p != null) {
+                DragonEyeBase b = DragonEyeApplication.getInstance().getSelectedBase();
+                p.setSummary(b.getFirmwareVersion());
+            }
         }
     }
 }

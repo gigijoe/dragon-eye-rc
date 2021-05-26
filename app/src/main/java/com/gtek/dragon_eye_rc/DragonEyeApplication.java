@@ -138,6 +138,12 @@ public class DragonEyeApplication extends Application {
         b.startResponseTimer();
     }
 
+    public void requestFirmwareVersion(DragonEyeBase b) {
+        final String payloadString = "#FirmwareVersion";
+        mUdpClient.send(b.getAddress(), DragonEyeBase.UDP_REMOTE_PORT, payloadString);
+        b.startResponseTimer();
+    }
+
     public void requestStatus(DragonEyeBase b) {
         final String payloadString = "#Status";
         mUdpClient.send(b.getAddress(), DragonEyeBase.UDP_REMOTE_PORT, payloadString);
@@ -182,6 +188,12 @@ public class DragonEyeApplication extends Application {
 
     public void requestCompassResume(DragonEyeBase b) {
         final String payloadString = "#CompassResume";
+        mUdpClient.send(b.getAddress(), DragonEyeBase.UDP_REMOTE_PORT, payloadString);
+        b.startResponseTimer();
+    }
+
+    public void requestFirmwareUpgrade(DragonEyeBase b) {
+        final String payloadString = "#FirmwareUpgrade";
         mUdpClient.send(b.getAddress(), DragonEyeBase.UDP_REMOTE_PORT, payloadString);
         b.startResponseTimer();
     }
