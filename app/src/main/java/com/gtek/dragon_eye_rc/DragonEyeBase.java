@@ -17,6 +17,7 @@ public class DragonEyeBase {
     private final AtomicBoolean isAlive = new AtomicBoolean(false);
     private int mMulticastReceiveCount = 0;
     private boolean mCompassLocked = false;
+    private boolean mBaseTrigger = false;
     private int mYaw = 0;
     private int mTemperature = -40000;
     private int mGpuLoad = 0;
@@ -205,4 +206,45 @@ public class DragonEyeBase {
     }
 
     public int gpuLoad() { return mGpuLoad; }
+
+    public class TriggerTimer implements Runnable {
+        private final AtomicBoolean isCancelled = new AtomicBoolean(false);
+        public void run() {
+            isCancelled.set(false);
+
+            try {
+                Thread.sleep(1000);
+            } catch (InterruptedException e) {
+                //e.printStackTrace();
+                isCancelled.set(true);
+            }
+
+            if(!isCancelled.get()) { /* Timeout */
+                mBaseTrigger = false;
+                Intent intent = new Intent();
+                intent.setAction("baseMsg");
+                intent.putExtra("baseTriggerTimeout", 0);
+                mContext.sendBroadcast(intent);
+            } else {
+            }
+        }
+
+        public void cancel() { isCancelled.set(true); }
+    }
+
+    private TriggerTimer mTriggerTimer = new TriggerTimer();
+    private Thread mTriggerTimerThread = null;
+
+    public void baseTrigger() {
+        mBaseTrigger = true;
+        if(mTriggerTimerThread != null) {
+            if (mTriggerTimerThread.isAlive()) {
+                mTriggerTimerThread.interrupt();
+            }
+        }
+        mTriggerTimerThread = new Thread(mTriggerTimer);
+        mTriggerTimerThread.start();
+    }
+
+    public boolean isBaseTrigger() { return mBaseTrigger; }
 }

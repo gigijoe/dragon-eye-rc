@@ -23,41 +23,12 @@ import androidx.preference.PreferenceManager;
 
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 
+import static com.gtek.dragon_eye_rc.DragonEyeBase.Type.BASE_A;
+import static com.gtek.dragon_eye_rc.DragonEyeBase.Type.BASE_B;
+
 public class CameraSettingsActivity extends AppCompatActivity {
     private Context mContext;
     private AlertDialog.Builder mBuilder;
-
-    private final Handler mHandler = new Handler(Looper.getMainLooper()) {
-        @Override
-        public void handleMessage(Message msg) {
-            super.handleMessage(msg);
-            switch (msg.what) {
-                case 1: /* RX */
-                    //udpRcvStrBuf.append(msg.obj.toString());
-                    //txt_Recv.setText(udpRcvStrBuf.toString());
-                    //System.out.println("UDP RX : " + msg.obj.toString());
-                    //String s = msg.obj.toString();
-                    String str = msg.obj.toString();
-                    System.out.println("UDP RX : " + str);
-                    int index = str.indexOf(':');
-                    String addr = str.substring(0, index);
-                    String s = str.substring(index+1);
-                    if(TextUtils.equals(s, "#Ack")) {
-                        Toast.makeText(mContext,"Update Successful", Toast.LENGTH_SHORT).show();
-                    }
-                    break;
-                case 2: /* TX */
-                    //udpSendStrBuf.append(msg.obj.toString());
-                    //txt_Send.setText(udpSendStrBuf.toString());
-                    System.out.println("UDP TX : " + msg.obj.toString());
-                    break;
-                case 3: /* Timeout */
-                    //txt_Recv.setText(udpRcvStrBuf.toString());
-                    System.out.println("UDP RX Timeout");
-                    break;
-            }
-        }
-    };
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -139,16 +110,8 @@ public class CameraSettingsActivity extends AppCompatActivity {
         fab.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-/*
-                Snackbar.make(view, "Replace with your own action", Snackbar.LENGTH_LONG)
-                        .setAction("Action", null).show();
-*/
                 StringBuffer udpPayload = new StringBuffer();
-
                 udpPayload.append("#CameraSettings\n");
-
-                //SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(CameraSettingsActivity.this);
-                //SharedPreferences sp = getSharedPreferences("CameraSettings", MODE_PRIVATE);
                 SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(mContext);
 
                 String s = sp.getString("camera_id", "");
@@ -229,27 +192,29 @@ public class CameraSettingsActivity extends AppCompatActivity {
         registerReceiver(broadcastReceiver, baseRcvIntentFilter);
     }
 
+    private void onUdpRx(String str) {
+        System.out.println("UDP RX : " + str);
+        int index = str.indexOf(':');
+        String addr = str.substring(0, index);
+        String s = str.substring(index + 1);
+        DragonEyeBase b = DragonEyeApplication.getInstance().findBaseByAddress(addr);
+        if (b != null) {
+            if(TextUtils.equals(s, "#Ack")) {
+                Toast.makeText(mContext,"Update Successful", Toast.LENGTH_SHORT).show();
+            }
+        }
+    }
+
     private BroadcastReceiver broadcastReceiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
             if(intent.getAction().equals("udpMsg")) {
                 if (intent.hasExtra("udpRcvMsg")) {
-                    Message message = new Message();
-                    message.obj = intent.getStringExtra("udpRcvMsg");
-                    message.what = 1;
-                    //Log.i("主界面Broadcast", "收到" + message.obj.toString());
-                    mHandler.sendMessage(message);
+                    onUdpRx(intent.getStringExtra("udpRcvMsg"));
                 } else if (intent.hasExtra("udpSendMsg")) {
-                    Message message = new Message();
-                    message.obj = intent.getStringExtra("udpSendMsg");
-                    message.what = 2;
-                    //Log.i("主界面Broadcast", "發送" + message.obj.toString());
-                    mHandler.sendMessage(message);
+                    System.out.println("UDP TX : " + intent.getStringExtra("udpSendMsg"));
                 } else if (intent.hasExtra("udpPollTimeout")) {
-                    Message message = new Message();
-                    message.what = 3;
-                    //Log.i("主界面Broadcast","逾時");
-                    mHandler.sendMessage(message);
+                    System.out.println("UDP RX Timeout");
                 }
             } else if(intent.getAction().equals("baseMsg")) {
                 if (intent.hasExtra("baseResponseTimeout")) {

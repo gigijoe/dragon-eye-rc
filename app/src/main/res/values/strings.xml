@@ -4,11 +4,14 @@
     <string name="base_b">Base B</string>
     <string name="system_settings">System Settings</string>
     <string name="camera_settings">Camera Settings</string>
+    <string name="misc_settings">Misc Settings</string>
+    <string name="delete_all_video_files">Delete all video files</string>
+    <string name="delete">Delete</string>
     <string name="rtsp_video">RTSP Video</string>
     <string name="compass_calibration">Compass Calibration</string>
     <string name="f3f_timer">F3F Timer</string>
     <string name="about">About</string>
     <string name="title_activity_compass">Compass Settings</string>
 
-    <string name="version">v0.1.5</string>
+    <string name="version">v0.1.6</string>
 </resources>

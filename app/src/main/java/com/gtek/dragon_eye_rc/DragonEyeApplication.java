@@ -198,6 +198,18 @@ public class DragonEyeApplication extends Application {
         b.startResponseTimer();
     }
 
+    public void requestVideoFiles(DragonEyeBase b, String cmd) {
+        final String payloadString = "#VideoFiles:" + cmd;
+        mUdpClient.send(b.getAddress(), DragonEyeBase.UDP_REMOTE_PORT, payloadString);
+        b.startResponseTimer();
+    }
+
+    public void requestSystemCommand(DragonEyeBase b, String cmd) {
+        final String payloadString = "#SystemCommand:" + cmd;
+        mUdpClient.send(b.getAddress(), DragonEyeBase.UDP_REMOTE_PORT, payloadString);
+        b.startResponseTimer();
+    }
+
     @Override
     public void onCreate() {
         super.onCreate();

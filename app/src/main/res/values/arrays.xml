@@ -23,16 +23,12 @@
     <string-array name="video_output_entries">
         <item>Disable</item>
         <item>Screen</item>
-        <item>RTP</item>
-        <item>HLS</item>
         <item>RTSP</item>
     </string-array>
 
     <string-array name="video_output_values">
         <item>disable</item>
         <item>screen</item>
-        <item>rtp</item>
-        <item>hls</item>
         <item>rtsp</item>
     </string-array>
 

@@ -11,9 +11,9 @@
             android:title="Base Type"
             app:useSimpleSummaryProvider="true" />
         <SeekBarPreference
-            android:defaultValue="32"
+            android:defaultValue="16"
             android:key="mog2_threshold"
-            android:max="64"
+            android:max="32"
             android:title="MOG2 Threshold"
             app:showSeekBarValue="true" />
         <SwitchPreference
@@ -45,6 +45,16 @@
             android:defaultValue="false"
             android:key="show_result"
             android:title="Show Result" />
+    </PreferenceCategory>
+    <PreferenceCategory android:title="Misc">
+        <Preference
+            android:key="misc_settings"
+            android:title="Misc Settings" >
+            <intent
+                android:action="android.intent.action.VIEW"
+                android:targetPackage="com.gtek.dragon_eye_rc"
+                android:targetClass="com.gtek.dragon_eye_rc.MiscSettingsActivity" />
+        </Preference>
     </PreferenceCategory>
     <PreferenceCategory android:title="Information">
     <Preference

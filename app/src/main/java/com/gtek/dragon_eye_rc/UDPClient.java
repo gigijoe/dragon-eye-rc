@@ -151,7 +151,6 @@ public class UDPClient implements Runnable {
                 continue;
             
             try {
-                //Log.i("udpClient", "UDP监听");
                 socket.setSoTimeout(3000);//设置超时为3s
                 socket.receive(packetRcv);
                 //packetRcv.getAddress().getHostAddress()

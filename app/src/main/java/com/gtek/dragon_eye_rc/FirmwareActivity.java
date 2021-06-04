@@ -112,12 +112,31 @@ public class FirmwareActivity extends AppCompatActivity {
         mUpgradeButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
+                upgradeDialog();
+            }
+        });
+
+        IntentFilter udpRcvIntentFilter = new IntentFilter("udpMsg");
+        registerReceiver(broadcastReceiver, udpRcvIntentFilter);
+
+        IntentFilter baseRcvIntentFilter = new IntentFilter("baseMsg");
+        registerReceiver(broadcastReceiver, baseRcvIntentFilter);
+    }
+
+    private void upgradeDialog() {
+        android.app.AlertDialog.Builder MyAlertDialog = new android.app.AlertDialog.Builder(this);
+        MyAlertDialog.setTitle("Upgrade firmware !!!");
+        MyAlertDialog.setMessage("Are you sure ?");
+        MyAlertDialog.setPositiveButton("Yes", new DialogInterface.OnClickListener() {
+            @Override
+            public void onClick(DialogInterface dialogInterface, int i) {
                 if(DragonEyeApplication.getInstance().mBaseList.isEmpty())
                     return;
 
                 Thread thread = new Thread(new Runnable() {
                     @Override
                     public void run() {
+                        DragonEyeBase b = DragonEyeApplication.getInstance().getSelectedBase();
                         DragonEyeApplication.getInstance().requestFirmwareUpgrade(b);
                     }
                 });
@@ -127,12 +146,12 @@ public class FirmwareActivity extends AppCompatActivity {
                 mUpgradeButton.setEnabled(false);
             }
         });
-
-        IntentFilter udpRcvIntentFilter = new IntentFilter("udpMsg");
-        registerReceiver(broadcastReceiver, udpRcvIntentFilter);
-
-        IntentFilter baseRcvIntentFilter = new IntentFilter("baseMsg");
-        registerReceiver(broadcastReceiver, baseRcvIntentFilter);
+        MyAlertDialog.setNegativeButton("No", new DialogInterface.OnClickListener() {
+            @Override
+            public void onClick(DialogInterface dialogInterface, int i) {
+            }
+        });
+        MyAlertDialog.show();
     }
 
     private void onUdpRx(String str) {
@@ -154,6 +173,7 @@ public class FirmwareActivity extends AppCompatActivity {
                 }
             } else if(TextUtils.equals(s, "#FirmwareUpgrade:Success")) {
                 mUpgradeStatus.setText("Upgrade successful ...");
+                mProgressBar.setProgress(100);
             } else if(TextUtils.equals(s, "#FirmwareUpgrade:Failed")) {
                 mUpgradeStatus.setText("Upgrade failed !!!");
             }

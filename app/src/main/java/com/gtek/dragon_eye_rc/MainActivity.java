@@ -245,6 +245,11 @@ public class MainActivity extends AppCompatActivity {
             lastPosition = position;
 
             viewHolder.txtName.setText(base.getType().toString());
+            if(base.isBaseTrigger()) {
+                viewHolder.txtName.setTextColor(Color.parseColor("#FF0000"));
+            } else {
+                viewHolder.txtName.setTextColor(Color.parseColor("#000000"));
+            }
             viewHolder.txtAddress.setText(base.getAddress());
             viewHolder.txtStatus.setText(base.getStatus().toString());
             switch(base.getStatus()) {
@@ -829,6 +834,15 @@ public class MainActivity extends AppCompatActivity {
                     mListViewAdapter.notifyDataSetChanged();
                 } else if(TextUtils.equals(s, "#Ack")) {
                     b.stopResponseTimer();
+                } else if(s.charAt(0) == '<' && s.charAt(s.length()-1) == '>') {
+                    char base = s.charAt(1);
+                    int serNo = Integer.parseInt(s.substring(2, s.length()-1));
+                    if((base == 'A' && serNo != serNoA) || (base == 'B' && serNo != serNoB)) {
+                        if(!b.isBaseTrigger()) {
+                            b.baseTrigger();
+                            mListViewAdapter.notifyDataSetChanged();
+                        }
+                    }
                 }
             }
         }
@@ -849,6 +863,8 @@ public class MainActivity extends AppCompatActivity {
                 if (intent.hasExtra("baseResponseTimeout")) { // base has no response of UDP request
                     mListViewAdapter.notifyDataSetChanged();
                 } else if(intent.hasExtra("baseStatusUpdate")) { // base status changed
+                    mListViewAdapter.notifyDataSetChanged();
+                } else if (intent.hasExtra("baseTriggerTimeout")) { // Trigger timeout
                     mListViewAdapter.notifyDataSetChanged();
                 }
             }

@@ -24,11 +24,19 @@
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/Theme.DragonEye">
-        <activity android:name=".FirmwareActivity"
+        <activity
+            android:name=".MiscSettingsActivity"
+            android:label="Misc Settings">
+            <intent-filter>
+                <action android:name="com.gtek.dragon_eye_rc.MiscSettingsActivity" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+        </activity>
+        <activity
+            android:name=".FirmwareActivity"
             android:label="Firmware Upgrade">
             <intent-filter>
                 <action android:name="com.gtek.dragon_eye_rc.FirmwareActivity" />
-
                 <category android:name="android.intent.category.DEFAULT" />
             </intent-filter>
         </activity>
@@ -37,7 +45,6 @@
             android:label="@string/title_activity_compass">
             <intent-filter>
                 <action android:name="com.gtek.dragon_eye_rc.CompassActivity" />
-
                 <category android:name="android.intent.category.DEFAULT" />
             </intent-filter>
         </activity>
@@ -63,7 +70,6 @@
         <activity android:name=".MainActivity">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
-
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>

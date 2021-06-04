@@ -51,6 +51,7 @@
             app:min="-10"
             app:showSeekBarValue="true" />
         <SeekBarPreference
+            android:enabled="false"
             android:defaultValue="0"
             android:key="exposure_compensation"
             android:max="20"

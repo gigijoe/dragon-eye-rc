@@ -25,37 +25,14 @@ import androidx.preference.PreferenceManager;
 
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 
+import static com.gtek.dragon_eye_rc.DragonEyeBase.Type.BASE_A;
+import static com.gtek.dragon_eye_rc.DragonEyeBase.Type.BASE_B;
 import static com.gtek.dragon_eye_rc.DragonEyeBase.UDP_REMOTE_PORT;
 
 public class SystemSettingsActivity extends AppCompatActivity {
     private static final int RTP_REMOTE_PORT = 5000;
     private Context mContext;
     private AlertDialog.Builder mBuilder;
-
-    private final Handler mHandler = new Handler(Looper.getMainLooper()) {
-        @Override
-        public void handleMessage(Message msg) {
-            super.handleMessage(msg);
-            switch (msg.what) {
-                case 1: /* RX */
-                    String str = msg.obj.toString();
-                    System.out.println("UDP RX : " + str);
-                    int index = str.indexOf(':');
-                    String addr = str.substring(0, index);
-                    String s = str.substring(index+1);
-                    if(TextUtils.equals(s, "#Ack")) {
-                        Toast.makeText(mContext,"Update Successful", Toast.LENGTH_SHORT).show();
-                    }
-                    break;
-                case 2: /* TX */
-                    System.out.println("UDP TX : " + msg.obj.toString());
-                    break;
-                case 3: /* Timeout */
-                    System.out.println("UDP RX Timeout");
-                    break;
-            }
-        }
-    };
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -94,11 +71,7 @@ public class SystemSettingsActivity extends AppCompatActivity {
             if (s.startsWith("#SystemSettings")) {
                 SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(mContext);
                 SharedPreferences.Editor editor = sp.edit();
-                editor.putString("video_output", "off");
-
-                //System.out.println("firmware_version is " + b.getFirmwareVersion());
-
-                //editor.putString("firmware_version", b.getFirmwareVersion());
+                editor.putString("video_output", "disable");
 
                 String lines[] = s.split("\\r?\\n");
                 for (int i = 0; i < lines.length; i++) {
@@ -119,26 +92,23 @@ public class SystemSettingsActivity extends AppCompatActivity {
                                 editor.putString("base_type", "base_b");
                             }
                         } else if (TextUtils.equals(keyValue[0], "base.mog2.threshold")) {
-                            editor.putInt("mog2_threshold", Integer.parseInt(keyValue[1]));
+                            int threshold = Integer.parseInt(keyValue[1]);
+                            if(threshold > 32)
+                                threshold = 32;
+                            editor.putInt("mog2_threshold", threshold);
                         } else if (TextUtils.equals(keyValue[0], "base.new.target.restriction")) {
                             if (TextUtils.equals(keyValue[1], "yes"))
                                 editor.putBoolean("new_target_restriction", true);
                             else
                                 editor.putBoolean("new_target_restriction", false);
-                        } else if (TextUtils.equals(keyValue[0], "video.output.screen")) {
-                            if (TextUtils.equals(keyValue[1], "yes"))
-                                editor.putString("video_output", "screen");
                         } else if (TextUtils.equals(keyValue[0], "video.output.file")) {
                             if (TextUtils.equals(keyValue[1], "yes"))
                                 editor.putBoolean("save_file", true);
                             else
                                 editor.putBoolean("save_file", false);
-                        } else if (TextUtils.equals(keyValue[0], "video.output.rtp")) {
+                        } else if (TextUtils.equals(keyValue[0], "video.output.screen")) {
                             if (TextUtils.equals(keyValue[1], "yes"))
-                                editor.putString("video_output", "rtp");
-                        } else if (TextUtils.equals(keyValue[0], "video.output.hls")) {
-                            if (TextUtils.equals(keyValue[1], "yes"))
-                                editor.putString("video_output", "hls");
+                                editor.putString("video_output", "screen");
                         } else if (TextUtils.equals(keyValue[0], "video.output.rtsp")) {
                             if (TextUtils.equals(keyValue[1], "yes"))
                                 editor.putString("video_output", "rtsp");
@@ -158,16 +128,8 @@ public class SystemSettingsActivity extends AppCompatActivity {
         fab.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-/*
-                Snackbar.make(view, "Replace with your own action", Snackbar.LENGTH_LONG)
-                        .setAction("Action", null).show();
-*/
                 StringBuffer udpPayload = new StringBuffer();
-
                 udpPayload.append("#SystemSettings\n");
-
-                //SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(SystemSettingsActivity.this);
-                //SharedPreferences sp = getSharedPreferences("SystemSettings", MODE_PRIVATE);
                 SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(mContext);
 
                 String s = sp.getString("base_type", "");
@@ -210,23 +172,11 @@ public class SystemSettingsActivity extends AppCompatActivity {
                     udpPayload.append("base.bug.trigger=no");
                 udpPayload.append("\n");
 
-                s = sp.getString("video_output", "");
+                s = sp.getString("video_output", "disable");
                 if(s.equals("screen"))
                     udpPayload.append("video.output.screen=yes");
                 else
                     udpPayload.append("video.output.screen=no");
-                udpPayload.append("\n");
-
-                if(s.equals("rtp"))
-                    udpPayload.append("video.output.rtp=yes");
-                else
-                    udpPayload.append("video.output.rtp=no");
-                udpPayload.append("\n");
-
-                if(s.equals("hls"))
-                    udpPayload.append("video.output.hls=yes");
-                else
-                    udpPayload.append("video.output.hls=no");
                 udpPayload.append("\n");
 
                 if(s.equals("rtsp"))
@@ -262,7 +212,6 @@ public class SystemSettingsActivity extends AppCompatActivity {
                             DragonEyeBase b = DragonEyeApplication.getInstance().getSelectedBase();
                             DragonEyeApplication.getInstance().mUdpClient.send(b.getAddress(), DragonEyeBase.UDP_REMOTE_PORT, udpPayload.toString());
                             b.startResponseTimer();
-
                             b.setSystemSettings(udpPayload.toString());
                         }
                     }
@@ -284,27 +233,42 @@ public class SystemSettingsActivity extends AppCompatActivity {
         super.onDestroy();
     }
 
+    private void onUdpRx(String str) {
+        System.out.println("UDP RX : " + str);
+        int index = str.indexOf(':');
+        String addr = str.substring(0, index);
+        String s = str.substring(index + 1);
+        DragonEyeBase b = DragonEyeApplication.getInstance().findBaseByAddress(addr);
+        if (b != null) {
+            if(TextUtils.equals(s, "#Ack")) {
+                Toast.makeText(mContext,"Update Successful", Toast.LENGTH_SHORT).show();
+
+                SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(mContext);
+                String type = sp.getString("base_type", "");
+                switch(type) {
+                    case "base_a":
+                        if(b.getType() == BASE_B)
+                            b.setTypeBaseA();
+                        break;
+                    case "base_b":
+                        if(b.getType() == BASE_A)
+                            b.setTypeBaseB();
+                        break;
+                }
+            }
+        }
+    }
+
     private BroadcastReceiver broadcastReceiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
             if(intent.getAction().equals("udpMsg")) {
                 if (intent.hasExtra("udpRcvMsg")) {
-                    Message message = new Message();
-                    message.obj = intent.getStringExtra("udpRcvMsg");
-                    message.what = 1;
-                    //Log.i("主界面Broadcast", "收到" + message.obj.toString());
-                    mHandler.sendMessage(message);
+                    onUdpRx(intent.getStringExtra("udpRcvMsg"));
                 } else if (intent.hasExtra("udpSendMsg")) {
-                    Message message = new Message();
-                    message.obj = intent.getStringExtra("udpSendMsg");
-                    message.what = 2;
-                    //Log.i("主界面Broadcast", "發送" + message.obj.toString());
-                    mHandler.sendMessage(message);
+                    System.out.println("UDP TX : " + intent.getStringExtra("udpSendMsg"));
                 } else if (intent.hasExtra("udpPollTimeout")) {
-                    Message message = new Message();
-                    message.what = 3;
-                    //Log.i("主界面Broadcast","逾時");
-                    mHandler.sendMessage(message);
+                    System.out.println("UDP RX Timeout");
                 }
             } else if(intent.getAction().equals("baseMsg")) {
                 if (intent.hasExtra("baseResponseTimeout")) {
