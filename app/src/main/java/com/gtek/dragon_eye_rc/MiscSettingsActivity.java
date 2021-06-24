@@ -10,9 +10,15 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.os.Bundle;
 import android.text.TextUtils;
+import android.util.Log;
+import android.view.Gravity;
+import android.view.MenuInflater;
+import android.view.MenuItem;
 import android.view.View;
 import android.view.WindowManager;
 import android.widget.Button;
+import android.widget.PopupMenu;
+import android.widget.TextView;
 import android.widget.Toast;
 
 public class MiscSettingsActivity extends AppCompatActivity {
@@ -44,7 +50,36 @@ public class MiscSettingsActivity extends AppCompatActivity {
                 deleteVideoFilesDialog();
             }
         });
+/*
+        TextView t = (TextView) findViewById(R.id.textViewTriggerRelayDebouenceValue);
+        View v = (View) findViewById(R.id.textViewTriggerRelayDebouence);
+        v.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                PopupMenu popup = new PopupMenu(mContext, view, Gravity.CENTER_HORIZONTAL);
+                MenuInflater inflater = popup.getMenuInflater();
+                inflater.inflate(R.menu.menu_trigger_relay_debouence, popup.getMenu());
+                popup.setOnMenuItemClickListener(new PopupMenu.OnMenuItemClickListener() {
+                    @Override
+                    public boolean onMenuItemClick(MenuItem menuItem) {
+                        switch(menuItem.getItemId()) {
+                            case R.id.t200ms:
+                                break;
+                            case R.id.t400ms:
+                                break;
+                            case R.id.t800ms:
+                                break;
+                            case R.id.t1200ms:
+                                break;
+                        }
+                        return false;
+                    }
+                });
 
+                popup.show();
+            }
+        });
+*/
         IntentFilter udpRcvIntentFilter = new IntentFilter("udpMsg");
         registerReceiver(broadcastReceiver, udpRcvIntentFilter);
 

@@ -55,27 +55,6 @@
             android:layout_marginBottom="8dp"
             android:background="@color/grey" />
 
-        <TextView
-            android:id="@+id/textViewEnableDisableDesktop"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginStart="64dp"
-            android:layout_marginEnd="16dp"
-            android:text="Enable / Disable Desktop"
-            android:textColor="@color/black"
-            android:textSize="16sp" />
-
-        <Switch
-            android:id="@+id/switchDesktop"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_gravity="end"
-            android:layout_marginTop="16dp"
-            android:layout_marginEnd="16dp"
-            android:layout_marginBottom="16dp"
-            android:paddingBottom="24dp"
-            tools:ignore="UseSwitchCompatOrMaterialXml" />
-
         <View
             android:layout_width="match_parent"
             android:layout_height="1dp"

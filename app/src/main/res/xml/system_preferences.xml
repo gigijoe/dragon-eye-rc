@@ -47,6 +47,13 @@
             android:title="Show Result" />
     </PreferenceCategory>
     <PreferenceCategory android:title="Misc">
+        <ListPreference
+            android:defaultValue="800"
+            android:entries="@array/relay_debouence_entries"
+            android:entryValues="@array/relay_debouence_values"
+            android:key="relay_debouence"
+            android:title="Relay debouence"
+            app:useSimpleSummaryProvider="true" />
         <Preference
             android:key="misc_settings"
             android:title="Misc Settings" >

@@ -139,7 +139,7 @@ public class MainActivity extends AppCompatActivity {
             TextView txtName;
             TextView txtAddress;
             TextView txtStatus;
-            ImageView imgCompassCalibration;
+            //ImageView imgCompassCalibration;
             ImageView imgSystemSettings;
             ImageView imgCameraSettings;
             ImageView imgRtspVideo;
@@ -161,6 +161,7 @@ public class MainActivity extends AppCompatActivity {
 
             switch (v.getId())
             {
+/*
                 case R.id.iv_explore: System.out.println("iv_explore OnClick...");
                     if(b.getStatus() == DragonEyeBase.Status.OFFLINE || b.getStatus() == DragonEyeBase.Status.STARTED)
                         break;
@@ -176,11 +177,8 @@ public class MainActivity extends AppCompatActivity {
                     } else {
                         compassCalibrationDialog(b);
                     }
-                    /*
-                    Intent i = new Intent(getApplicationContext(), CompassActivity.class);
-                    startActivity(i);
-                    */
                     break;
+ */
                 case R.id.iv_system_settings: System.out.println("iv_system_settings OnClick...");
                     if(b.getStatus() == DragonEyeBase.Status.OFFLINE || b.getStatus() == DragonEyeBase.Status.STARTED)
                         break;
@@ -213,7 +211,7 @@ public class MainActivity extends AppCompatActivity {
         @Override
         public View getView(int position, View convertView, ViewGroup parent) {
             // Get the data item for this position
-            DragonEyeBase base = getItem(position);
+            DragonEyeBase b = getItem(position);
             // Check if an existing view is being reused, otherwise inflate the view
             ViewHolder viewHolder; // view lookup cache stored in tag
 
@@ -226,7 +224,7 @@ public class MainActivity extends AppCompatActivity {
                 viewHolder.txtName = (TextView) convertView.findViewById(R.id.iv_name);
                 viewHolder.txtAddress = (TextView) convertView.findViewById(R.id.tv_ip);
                 viewHolder.txtStatus = (TextView) convertView.findViewById(R.id.tv_status);
-                viewHolder.imgCompassCalibration = (ImageView) convertView.findViewById(R.id.iv_explore);
+                //viewHolder.imgCompassCalibration = (ImageView) convertView.findViewById(R.id.iv_explore);
                 viewHolder.imgSystemSettings = (ImageView) convertView.findViewById(R.id.iv_system_settings);
                 viewHolder.imgCameraSettings = (ImageView) convertView.findViewById(R.id.iv_camera_settings);
                 viewHolder.imgRtspVideo = (ImageView) convertView.findViewById(R.id.iv_rtsp_video);
@@ -244,16 +242,16 @@ public class MainActivity extends AppCompatActivity {
             result.startAnimation(animation);
             lastPosition = position;
 
-            viewHolder.txtName.setText(base.getType().toString());
-            if(base.isBaseTrigger()) {
+            viewHolder.txtName.setText(b.getType().toString());
+            if(b.isBaseTrigger()) {
                 viewHolder.txtName.setTextColor(Color.parseColor("#FF0000"));
             } else {
                 viewHolder.txtName.setTextColor(Color.parseColor("#000000"));
             }
-            viewHolder.txtAddress.setText(base.getAddress());
-            viewHolder.txtStatus.setText(base.getStatus().toString());
-            switch(base.getStatus()) {
-                case OFFLINE: viewHolder.txtStatus.setTextColor(Color.parseColor("#D3D3D3")); /* grey */
+            viewHolder.txtAddress.setText(b.getAddress());
+            viewHolder.txtStatus.setText(b.getStatus().toString());
+            switch(b.getStatus()) {
+                case OFFLINE: viewHolder.txtStatus.setTextColor(Color.parseColor("#D3D3D3")); // grey
                     break;
                 case ONLINE: viewHolder.txtStatus.setTextColor(Color.parseColor("#000000"));
                     break;
@@ -262,24 +260,24 @@ public class MainActivity extends AppCompatActivity {
                 case STARTED: viewHolder.txtStatus.setTextColor(Color.parseColor("#00FF00"));
                     break;
             }
-
+/*
             viewHolder.imgCompassCalibration.setOnClickListener(this);
             viewHolder.imgCompassCalibration.setTag(position);
-            switch(base.getStatus()) {
+            switch(b.getStatus()) {
                 case OFFLINE:
-                case STARTED: viewHolder.imgCompassCalibration.setColorFilter(Color.parseColor("#D3D3D3")); /* grey */
+                case STARTED: viewHolder.imgCompassCalibration.setColorFilter(Color.parseColor("#D3D3D3")); // grey
                     break;
                 default:
-                    if(base.isCompassLocked())
+                    if(b.isCompassLocked())
                         viewHolder.imgCompassCalibration.setColorFilter(Color.parseColor("#00ff00"));
                     else
                         viewHolder.imgCompassCalibration.setColorFilter(Color.parseColor("#000000"));
                     break;
             }
-
+*/
             viewHolder.imgSystemSettings.setOnClickListener(this);
             viewHolder.imgSystemSettings.setTag(position);
-            switch(base.getStatus()) {
+            switch(b.getStatus()) {
                 case OFFLINE:
                 case STARTED: viewHolder.imgSystemSettings.setColorFilter(Color.parseColor("#D3D3D3"));
                     break;
@@ -288,7 +286,7 @@ public class MainActivity extends AppCompatActivity {
 
             viewHolder.imgCameraSettings.setOnClickListener(this);
             viewHolder.imgCameraSettings.setTag(position);
-            switch(base.getStatus()) {
+            switch(b.getStatus()) {
                 case OFFLINE:
                 case STARTED: viewHolder.imgCameraSettings.setColorFilter(Color.parseColor("#D3D3D3"));
                     break;
@@ -297,13 +295,14 @@ public class MainActivity extends AppCompatActivity {
 
             viewHolder.imgRtspVideo.setOnClickListener(this);
             viewHolder.imgRtspVideo.setTag(position);
-            switch(base.getStatus()) {
+            switch(b.getStatus()) {
                 case STARTED: viewHolder.imgRtspVideo.setColorFilter(Color.parseColor("#000000"));
                     break;
                 default: viewHolder.imgRtspVideo.setColorFilter(Color.parseColor("#D3D3D3"));
             }
 
-            String s = "Yaw " + base.yaw() + "\u00b0 / " + "Temp " + (float)base.temperature() / 1000.0 + "\u2103" + " / GPU " + base.gpuLoad() / 10 + "%";
+            //String s = "Yaw " + b.yaw() + "\u00b0 / " + "Temp " + (float)b.temperature() / 1000.0 + "\u2103" + " / GPU " + b.gpuLoad() / 10 + "% / FPS " + b.fps();
+            String s = "FPS " + b.fps() + " / " + "Temp " + (float)b.temperature() / 1000.0 + "\u2103" + " / GPU " + b.gpuLoad() / 10 + "%";
             viewHolder.txtTelemetry.setText(s);
 
             // Return the completed view to render on screen
@@ -483,6 +482,11 @@ public class MainActivity extends AppCompatActivity {
 
                 String baseHost[] = msg.split(":");
                 if (baseHost.length >= 2) {
+                    Intent intent = new Intent();
+                    intent.setAction("mcastMsg");
+                    intent.putExtra("mcastRcvMsg", msg);
+                    mContext.sendBroadcast(intent);
+
                     DragonEyeBase b = DragonEyeApplication.getInstance().findBaseByAddress(baseHost[1]);
                     //System.out.println(baseHost[0]);
                     //System.out.println(baseHost[1]);
@@ -522,11 +526,13 @@ public class MainActivity extends AppCompatActivity {
                         }
 
                         if(baseHost.length >= 5) {
-                            b.setYaw(Integer.parseInt(baseHost[2]));
+                            b.setFps(Integer.parseInt(baseHost[2]));
                             b.setTemperature(Integer.parseInt(baseHost[3]));
                             b.setGpuLoad(Integer.parseInt(baseHost[4]));
 
-                            Intent intent = new Intent();
+                            //mListViewAdapter.notifyDataSetChanged(); This is NOT allow !!!
+
+                            intent = new Intent(); /* Broadcast to as UDP message ... */
                             intent.setAction("udpMsg");
                             intent.putExtra("udpRcvMsg", b.getAddress() + ":#Telemetry");
                             mContext.sendBroadcast(intent);
@@ -550,11 +556,6 @@ public class MainActivity extends AppCompatActivity {
                             }
                         }
                     }
-
-                    Intent intent = new Intent();
-                    intent.setAction("mcastMsg");
-                    intent.putExtra("mcastRcvMsg", msg);
-                    mContext.sendBroadcast(intent);
                 }
             }
 
@@ -842,6 +843,11 @@ public class MainActivity extends AppCompatActivity {
                             b.baseTrigger();
                             mListViewAdapter.notifyDataSetChanged();
                         }
+                    }
+                } else if (s.startsWith("#Error")) {
+                    if(b.getStatus() != DragonEyeBase.Status.ERROR) {
+                        b.started();
+                        mListViewAdapter.notifyDataSetChanged();
                     }
                 }
             }

@@ -441,7 +441,38 @@ public class TimerActivity extends AppCompatActivity {
         }
     }
 
-    private void onNetwokRx(String str) {
+    private void onUdpRx(String str) {
+        System.out.println("UDP RX : " + str);
+        int index = str.indexOf(':');
+        String addr = str.substring(0, index);
+        String s = str.substring(index + 1);
+        DragonEyeBase b = DragonEyeApplication.getInstance().findBaseByAddress(addr);
+        if (b != null) {
+            if(s != null) {
+                if(s.charAt(0) == '<' && s.charAt(s.length()-1) == '>') {
+                    char base = s.charAt(1);
+                    int serNo = Integer.parseInt(s.substring(2, s.length()-1));
+                    if(base == 'A' && serNo != serNoA) {
+                        if(mRepeatTriggerTick.get() == 0) {
+                            mRepeatTriggerTimer.cancel();
+                            mRepeatTriggerTimer.start();
+                            onBaseA();
+                        }
+                        serNoA = serNo;
+                    }else if(base == 'B' && serNo != serNoB) {
+                        if(mRepeatTriggerTick.get() == 0) {
+                            mRepeatTriggerTimer.cancel();
+                            mRepeatTriggerTimer.start();
+                            onBaseB();
+                        }
+                        serNoB = serNo;
+                    }
+                }
+            }
+        }
+    }
+
+    private void onMulticastRx(String str) {
         String baseHost[] = str.split(":");
         if (baseHost.length >= 2) {
             if (TextUtils.equals(baseHost[0], "TRIGGER_A")) {
@@ -473,7 +504,7 @@ public class TimerActivity extends AppCompatActivity {
         public void onReceive(Context context, Intent intent) {
             if(intent.getAction().equals("udpMsg")) {
                 if (intent.hasExtra("udpRcvMsg")) {
-                    onNetwokRx(intent.getStringExtra("udpRcvMsg"));
+                    onUdpRx(intent.getStringExtra("udpRcvMsg"));
                 } else if (intent.hasExtra("udpSendMsg")) {
                     System.out.println("UDP TX : " + intent.getStringExtra("udpSendMsg"));
                 } else if (intent.hasExtra("udpPollTimeout")) {
@@ -481,7 +512,7 @@ public class TimerActivity extends AppCompatActivity {
                 }
             } else if(intent.getAction().equals("mcastMsg")) {
                 if (intent.hasExtra("mcastRcvMsg")) {
-                    onNetwokRx(intent.getStringExtra("mcastRcvMsg"));
+                    onMulticastRx(intent.getStringExtra("mcastRcvMsg"));
                 } else if (intent.hasExtra("mcastSendMsg")) {
                 } else if (intent.hasExtra("mcastPollTimeout")) {
                 }

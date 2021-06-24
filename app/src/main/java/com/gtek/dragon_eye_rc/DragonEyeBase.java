@@ -21,6 +21,7 @@ public class DragonEyeBase {
     private int mYaw = 0;
     private int mTemperature = -40000;
     private int mGpuLoad = 0;
+    private int mFps = 0;
 
     DragonEyeBase(Context context, String baseType, String address) {
         mContext = context;
@@ -80,7 +81,8 @@ public class DragonEyeBase {
         OFFLINE,
         ONLINE,
         STOPPED,
-        STARTED;
+        STARTED,
+        ERROR;
 
         @NonNull
         @Override
@@ -90,6 +92,7 @@ public class DragonEyeBase {
                 case ONLINE: return "On Line";
                 case STOPPED: return "Stopped";
                 case STARTED: return "Started";
+                case ERROR: return "Error";
             }
             return "Unknown Status";
         }
@@ -161,6 +164,7 @@ public class DragonEyeBase {
     public void online() { mStatus = Status.ONLINE; }
     public void stopped() { mStatus = Status.STOPPED; }
     public void started() { mStatus = Status.STARTED; }
+    public void error() { mStatus = Status.ERROR; }
 
     public void reset() {
         mType = Type.BASE_UNKNOWN;
@@ -168,7 +172,7 @@ public class DragonEyeBase {
         mAddress = "";
         mSystemSettings = "";
         mCameraSettings = "";
-        mFirmwareVersion = "";
+        mFirmwareVersion = "unknown";
     }
 
     public void destroy() {
@@ -189,23 +193,21 @@ public class DragonEyeBase {
     public void compassUnlock() { mCompassLocked = false; }
     public boolean isCompassLocked() { return mCompassLocked; }
 
-    public void setYaw(int yaw) {
-        mYaw = yaw;
-    }
-
+    public void setYaw(int yaw) { mYaw = yaw; }
     public int yaw() { return mYaw; }
 
     public void setTemperature(int temp) {
         mTemperature = temp;
     }
-
     public int temperature() { return mTemperature; }
 
     public void setGpuLoad(int load) {
         mGpuLoad = load;
     }
-
     public int gpuLoad() { return mGpuLoad; }
+
+    public void setFps(int f) { mFps = f; }
+    public int fps() { return mFps; }
 
     public class TriggerTimer implements Runnable {
         private final AtomicBoolean isCancelled = new AtomicBoolean(false);

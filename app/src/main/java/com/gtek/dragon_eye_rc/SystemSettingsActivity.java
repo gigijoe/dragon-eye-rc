@@ -117,6 +117,16 @@ public class SystemSettingsActivity extends AppCompatActivity {
                                 editor.putBoolean("show_result", true);
                             else
                                 editor.putBoolean("show_result", false);
+                        } else if (TextUtils.equals(keyValue[0], "base.relay.debouence")) {
+                            if (TextUtils.equals(keyValue[1], "200")) {
+                                editor.putString("relay_debouence", "200");
+                            } else if (TextUtils.equals(keyValue[1], "400")) {
+                                editor.putString("relay_debouence", "400");
+                            } else if (TextUtils.equals(keyValue[1], "800")) {
+                                editor.putString("relay_debouence", "800");
+                            } else if (TextUtils.equals(keyValue[1], "1200")) {
+                                editor.putString("relay_debouence", "1200");
+                            }
                         }
                     }
                 }
@@ -197,6 +207,19 @@ public class SystemSettingsActivity extends AppCompatActivity {
                     udpPayload.append("video.output.result=yes");
                 else
                     udpPayload.append("video.output.result=no");
+                udpPayload.append("\n");
+
+                s = sp.getString("relay_debouence", "800");
+                switch(s) {
+                    case "200": udpPayload.append("base.relay.debouence=200");
+                        break;
+                    case "400": udpPayload.append("base.relay.debouence=400");
+                        break;
+                    case "800": udpPayload.append("base.relay.debouence=800");
+                        break;
+                    case "1200": udpPayload.append("base.relay.debouence=1200");
+                        break;
+                }
                 udpPayload.append("\n");
 
                 //System.out.println(udpPayload.toString());
@@ -297,7 +320,8 @@ public class SystemSettingsActivity extends AppCompatActivity {
             Preference p = findPreference("firmware_version");
             if(p != null) {
                 DragonEyeBase b = DragonEyeApplication.getInstance().getSelectedBase();
-                p.setSummary(b.getFirmwareVersion());
+                if(b != null)
+                    p.setSummary(b.getFirmwareVersion());
             }
         }
     }
