@@ -174,6 +174,7 @@ public class FirmwareActivity extends AppCompatActivity {
             } else if(TextUtils.equals(s, "#FirmwareUpgrade:Success")) {
                 mUpgradeStatus.setText("Upgrade successful ...");
                 mProgressBar.setProgress(100);
+                b.setFirmwareVersion(getResources().getString(R.string.version));
             } else if(TextUtils.equals(s, "#FirmwareUpgrade:Failed")) {
                 mUpgradeStatus.setText("Upgrade failed !!!");
             }

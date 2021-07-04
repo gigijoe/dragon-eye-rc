@@ -80,14 +80,15 @@ public class VideoActivity  extends Activity implements IVLCVout.Callback    {
         ArrayList<String> options = new ArrayList<String>();
         //options.add("--aout=opensles");
         //options.add("--audio-time-stretch"); // time stretching
-        options.add("-v"); // verbosity
+        //options.add("-v"); // verbosity
         //options.add("--aout=opensles");
         //options.add("--avcodec-codec=hevc");
         //options.add("--file-logging");
         //options.add("--logfile=vlc-log.txt");
+        options.add("--file-caching=2000");
         options.add("--log-verbose");
         options.add("--low-delay");
-        options.add("--fps=10");
+        options.add("--fps=15");
         //options.add("--rtsp-tcp");
         options.add("--rtsp-timeout=600"); //  Timeout in 10 minutes.
 

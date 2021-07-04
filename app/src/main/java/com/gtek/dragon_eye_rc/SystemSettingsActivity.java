@@ -127,6 +127,12 @@ public class SystemSettingsActivity extends AppCompatActivity {
                             } else if (TextUtils.equals(keyValue[1], "1200")) {
                                 editor.putString("relay_debouence", "1200");
                             }
+                        } else if (TextUtils.equals(keyValue[0], "base.horizon.ratio")) {
+                            if (TextUtils.equals(keyValue[1], "20")) {
+                                editor.putString("horizon_ratio", "20");
+                            } else if (TextUtils.equals(keyValue[1], "30")) {
+                                editor.putString("horizon_ratio", "30");
+                            }
                         }
                     }
                 }
@@ -218,6 +224,15 @@ public class SystemSettingsActivity extends AppCompatActivity {
                     case "800": udpPayload.append("base.relay.debouence=800");
                         break;
                     case "1200": udpPayload.append("base.relay.debouence=1200");
+                        break;
+                }
+                udpPayload.append("\n");
+
+                s = sp.getString("horizon_ratio", "20");
+                switch(s) {
+                    case "20": udpPayload.append("base.horizon.ratio=20");
+                        break;
+                    case "30": udpPayload.append("base.horizon.ratio=30");
                         break;
                 }
                 udpPayload.append("\n");
@@ -323,6 +338,16 @@ public class SystemSettingsActivity extends AppCompatActivity {
                 if(b != null)
                     p.setSummary(b.getFirmwareVersion());
             }
+/*
+            Thread thread = new Thread(new Runnable() {
+                @Override
+                public void run() {
+                    DragonEyeBase b = DragonEyeApplication.getInstance().getSelectedBase();
+                    DragonEyeApplication.getInstance().requestFirmwareVersion(b);
+                }
+            });
+            thread.start();
+*/
         }
     }
 }

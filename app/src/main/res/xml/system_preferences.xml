@@ -54,6 +54,13 @@
             android:key="relay_debouence"
             android:title="Relay debouence"
             app:useSimpleSummaryProvider="true" />
+        <ListPreference
+            android:defaultValue="20"
+            android:entries="@array/horizon_ratio_entries"
+            android:entryValues="@array/horizon_ratio_values"
+            android:key="horizon_ratio"
+            android:title="Horizon ratio of screen"
+            app:useSimpleSummaryProvider="true" />
         <Preference
             android:key="misc_settings"
             android:title="Misc Settings" >
