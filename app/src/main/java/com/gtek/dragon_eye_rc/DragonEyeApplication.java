@@ -232,7 +232,7 @@ public class DragonEyeApplication extends Application {
         mInstance = this;
 
         mUdpClient = new UDPClient(getApplicationContext());
-        mUdpClient.start();
+        //mUdpClient.start();
 
         mTonePlayer = new TonePlayer(getApplicationContext());
     }

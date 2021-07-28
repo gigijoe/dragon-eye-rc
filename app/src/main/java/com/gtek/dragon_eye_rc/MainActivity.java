@@ -98,10 +98,14 @@ public class MainActivity extends AppCompatActivity {
     public ListView mListView;
     public ListViewAdapter mListViewAdapter;
 
+    public TextView mWifiSsid;
     public TextView mStatusView;
 
     public MulticastThread mMulticastThread2 = null;
     public MulticastThread mMulticastThread3 = null;
+
+    private WifiManager.WifiLock highPerfWifiLock;
+    private WifiManager.WifiLock lowLatencyWifiLock;
 
     private boolean isPaused = false;
 
@@ -324,12 +328,12 @@ public class MainActivity extends AppCompatActivity {
         return "null";
     }
 
-    public static byte byteOfInt(int value, int which) {
+    private static byte byteOfInt(int value, int which) {
         int shift = which * 8;
         return (byte)(value >> shift);
     }
 
-    public static InetAddress intToInet(int value) {
+    private static InetAddress intToInet(int value) {
         byte[] bytes = new byte[4];
         for(int i = 0; i<4; i++) {
             bytes[i] = byteOfInt(value, i);
@@ -389,25 +393,25 @@ public class MainActivity extends AppCompatActivity {
                 e.printStackTrace();
             }
 
-            @SuppressLint("WifiManagerLeak") final WifiManager wifiManager = (WifiManager) getApplicationContext().getSystemService(Context.WIFI_SERVICE);
+            @SuppressLint("WifiManagerLeak") final WifiManager wifiMgr = (WifiManager) getApplicationContext().getSystemService(Context.WIFI_SERVICE);
 
-            WifiManager.MulticastLock lock = wifiManager.createMulticastLock("mylock");
+            WifiManager.MulticastLock lock = wifiMgr.createMulticastLock("mylock");
             lock.setReferenceCounted(true);
             lock.acquire();
 
             DatagramPacket packet;
             while (running.get()) {
-                if (wifiManager.isWifiEnabled() == false)
+                if (wifiMgr.isWifiEnabled() == false)
                     continue;
 
-                WifiInfo wifiInfo = wifiManager.getConnectionInfo();
+                WifiInfo wifiInfo = wifiMgr.getConnectionInfo();
                 if (wifiInfo.getNetworkId() == -1)
                     continue;
 
                 if (wifiInfo.getSupplicantState() != SupplicantState.COMPLETED)
                     continue;
 
-                int addr = wifiManager.getDhcpInfo().ipAddress;
+                int addr = wifiMgr.getDhcpInfo().ipAddress;
                 if (localAddr != addr || networkId != wifiInfo.getNetworkId()) {
                     localAddr = addr;
                     networkId = wifiInfo.getNetworkId();
@@ -426,7 +430,7 @@ public class MainActivity extends AppCompatActivity {
                             System.out.println(nis.nextElement());
 */
                         System.out.println("multicastThread - Wifi SSID : " + wifiInfo.getSSID());
-                        System.out.println("multicastThread - Bind address " + localInetAddress);
+                        System.out.println("multicastThread - Socket address " + localInetAddress);
 
                         if (socket != null) {
                             socket.close();
@@ -483,6 +487,7 @@ public class MainActivity extends AppCompatActivity {
                 String baseHost[] = msg.split(":");
                 if (baseHost.length >= 2) {
                     Intent intent = new Intent();
+                    intent.setFlags(Intent.FLAG_RECEIVER_FOREGROUND);
                     intent.setAction("mcastMsg");
                     intent.putExtra("mcastRcvMsg", msg);
                     mContext.sendBroadcast(intent);
@@ -495,7 +500,7 @@ public class MainActivity extends AppCompatActivity {
                         try {
                             InetAddress.getByName(baseHost[1]); // Test if valid ip address
                         } catch (UnknownHostException e) {
-                            Log.i("UDPClient", "Unknown host : " + baseHost[1]);
+                            Log.i("multicastThread", "Unknown host : " + baseHost[1]);
                             e.printStackTrace();
                             continue;
                         }
@@ -650,118 +655,142 @@ public class MainActivity extends AppCompatActivity {
         IntentFilter baseRcvIntentFilter = new IntentFilter("baseMsg");
         registerReceiver(broadcastReceiver, baseRcvIntentFilter);
 
-        /*
-        @SuppressLint("WifiManagerLeak") final WifiManager wifiManager = (WifiManager) getApplicationContext().getSystemService(Context.WIFI_SERVICE);
-        final DhcpInfo dhcp = wifiManager.getDhcpInfo();
+        IntentFilter wifiRcvIntentFilter = new IntentFilter("wifiMsg");
+        registerReceiver(broadcastReceiver, wifiRcvIntentFilter);
 
-        System.out.println("IP : " + stringAddress(dhcp.ipAddress));
-        System.out.println("Netmask : " + stringAddress(dhcp.netmask));
-        System.out.println("Gateway : " + stringAddress(dhcp.gateway));
-        System.out.println("DNS 1 : " + stringAddress(dhcp.dns1));
-        System.out.println("DNS 2 : " + stringAddress(dhcp.dns2));
-*/
-        TextView wifi_ssid = (TextView) findViewById(R.id.textview_ssid);
+        mWifiSsid = (TextView) findViewById(R.id.textview_ssid);
         mStatusView = (TextView) findViewById(R.id.textview_status);
 
-        ConnectionUtil mConnectionMonitor = new ConnectionUtil(this);
-        mConnectionMonitor.onInternetStateListener(new ConnectionUtil.ConnectionStateListener() {
+        // Make sure Wi-Fi is fully powered up
+        WifiManager wifiMgr = (WifiManager) getApplicationContext().getSystemService(Context.WIFI_SERVICE);
+        highPerfWifiLock = wifiMgr.createWifiLock(WifiManager.WIFI_MODE_FULL_HIGH_PERF, "High Perf Lock");
+        highPerfWifiLock.setReferenceCounted(false);
+        highPerfWifiLock.acquire();
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            lowLatencyWifiLock = wifiMgr.createWifiLock(WifiManager.WIFI_MODE_FULL_LOW_LATENCY, "Low Latency Lock");
+            lowLatencyWifiLock.setReferenceCounted(false);
+            lowLatencyWifiLock.acquire();
+        }
+
+        NetworkRequest.Builder req = new NetworkRequest.Builder();
+        req.addTransportType(NetworkCapabilities.TRANSPORT_WIFI);
+        req.removeCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET); // No internet
+
+        ConnectivityManager connectivityManager = (ConnectivityManager) mContext.getSystemService(Context.CONNECTIVITY_SERVICE);
+        connectivityManager.requestNetwork(req.build(), new ConnectivityManager.NetworkCallback() {
             @Override
-            public void onWifiConnection(boolean connected) {
-                System.out.println("onWifiConnection ...");
-
-                isWifiConnected = connected;
-                if (connected) {
-                    System.out.println("On Wifi Connected ...");
-                    @SuppressLint("WifiManagerLeak") final WifiManager wifiManager = (WifiManager) getApplicationContext().getSystemService(Context.WIFI_SERVICE);
-                    WifiInfo wifiInfo = wifiManager.getConnectionInfo();
-                    if (wifiInfo.getSupplicantState() == SupplicantState.COMPLETED) {
-                        System.out.println("Wifi SSID : " + wifiInfo.getSSID());
-
-                        String ssid = wifiInfo.getSSID().replace("\"", "");
-                        if(!TextUtils.equals(wifi_ssid.getText(), ssid)) /* Connection changed */
-                            onWifiConnectionChanged();
-                        wifi_ssid.setText(ssid);
-                        mStatusView.setText("Searching ...");
-
-                        if(mMulticastThread2.isRunning() == false)
-                            mMulticastThread2.start();
-                        if(mMulticastThread3.isRunning() == false)
-                            mMulticastThread3.start();
-                        if(DragonEyeApplication.getInstance().mUdpClient.isRunning() == false)
-                            DragonEyeApplication.getInstance().mUdpClient.start();
-                    }
+            public void onAvailable(@NonNull final Network network) {
+                super.onAvailable(network);
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                    connectivityManager.bindProcessToNetwork(network);
                 } else {
-                    System.out.println("On Wifi Disconnected ...");
-                    wifi_ssid.setText("Wifi disconnected !!!");
-                    mStatusView.setText("Standby ...");
+                    ConnectivityManager.setProcessDefaultNetwork(network);
+                }
+                //connectivityManager.unregisterNetworkCallback(this);
 
-                    onWifiConnectionChanged();
+                @SuppressLint("WifiManagerLeak") final WifiManager wifiMgr = (WifiManager) getApplicationContext().getSystemService(Context.WIFI_SERVICE);
+                WifiInfo wifiInfo = wifiMgr.getConnectionInfo();
+                //System.out.println("wifiInfo.getNetworkId() = " + wifiInfo.getNetworkId());
+                if (wifiInfo.getSupplicantState() == SupplicantState.COMPLETED) {
+                    System.out.println("Wifi SSID : " + wifiInfo.getSSID());
+                    String ssid = wifiInfo.getSSID().replace("\"", "");
 
-                    if(DragonEyeApplication.getInstance().mUdpClient.isRunning())
-                        DragonEyeApplication.getInstance().mUdpClient.stop();
-                    if(mMulticastThread2.isRunning())
-                        mMulticastThread2.stop();
-                    if(mMulticastThread3.isRunning())
-                        mMulticastThread3.stop();
+                    Intent intent = new Intent(); /* Broadcast to as UDP message ... */
+                    intent.setAction("wifiMsg");
+                    intent.putExtra("wifiConnected", ssid);
+                    mContext.sendBroadcast(intent);
                 }
             }
 
-            private void onWifiConnectionChanged() {
-                for(DragonEyeBase b : DragonEyeApplication.getInstance().mBaseList) {
-                    b.destroy();
-                }
-                DragonEyeApplication.getInstance().mBaseList.clear();
-                mListViewAdapter.notifyDataSetChanged();
+            @Override
+            public void onLost(Network network)
+            {
+                System.out.println("Wifi Disconnected ...");
+
+                Intent intent = new Intent(); /* Broadcast to as UDP message ... */
+                intent.setAction("wifiMsg");
+                intent.putExtra("wifiDisconnected", "");
+                mContext.sendBroadcast(intent);
             }
         });
 
         mMulticastThread2 = new MulticastThread("224.0.0.2", 9002);
-        mMulticastThread2.start();
+        //mMulticastThread2.start();
 
         mMulticastThread3 = new MulticastThread("224.0.0.3", 9003);
-        mMulticastThread3.start();
+        //mMulticastThread3.start();
 /*
-        DragonEyeApplication.getInstance().addBase(new DragonEyeBase("BASE_A", "10.0.0.1"));
-        DragonEyeApplication.getInstance().addBase(new DragonEyeBase("BASE_B", "172.16.0.1"));
-        DragonEyeApplication.getInstance().addBase(new DragonEyeBase("BASE_B", "192.168.0.1"));
-        DragonEyeApplication.getInstance().addBase(new DragonEyeBase("BASE_A", "192.168.168.1"));
+        DragonEyeApplication.getInstance().addBase(new DragonEyeBase(mContext, "BASE_A", "10.0.0.1"));
+        DragonEyeApplication.getInstance().addBase(new DragonEyeBase(mContext,"BASE_B", "172.16.0.1"));
+        DragonEyeApplication.getInstance().addBase(new DragonEyeBase(mContext, "BASE_B", "192.168.0.1"));
+        DragonEyeApplication.getInstance().addBase(new DragonEyeBase(mContext, "BASE_A", "192.168.168.1"));
 */
+    }
+
+    private void clearAllDragonEyeBase() {
+        for(DragonEyeBase b : DragonEyeApplication.getInstance().mBaseList) {
+            b.destroy();
+        }
+        DragonEyeApplication.getInstance().mBaseList.clear();
+        mListViewAdapter.notifyDataSetChanged();
+    }
+
+    private void onWifiConnected(String ssid) {
+        if (TextUtils.equals(mWifiSsid.getText(), ssid)) { // Connection changed
+            clearAllDragonEyeBase();
+
+            if(DragonEyeApplication.getInstance().mUdpClient.isRunning())
+                DragonEyeApplication.getInstance().mUdpClient.stop();
+            if(mMulticastThread2.isRunning())
+                mMulticastThread2.stop();
+            if(mMulticastThread3.isRunning())
+                mMulticastThread3.stop();
+        }
+
+        @SuppressLint("WifiManagerLeak") final WifiManager wifiMgr = (WifiManager) getApplicationContext().getSystemService(Context.WIFI_SERVICE);
+        final DhcpInfo dhcp = wifiMgr.getDhcpInfo();
+
+        System.out.println("IP : " + stringAddress(dhcp.ipAddress));
+        //System.out.println("Netmask : " + stringAddress(dhcp.netmask));
+        System.out.println("Gateway : " + stringAddress(dhcp.gateway));
+        System.out.println("DNS 1 : " + stringAddress(dhcp.dns1));
+        //System.out.println("DNS 2 : " + stringAddress(dhcp.dns2));
+
+        mWifiSsid.setText(ssid);
+        mStatusView.setText("Base Scaning ...");
+
+        if(mMulticastThread2.isRunning() == false)
+            mMulticastThread2.start();
+        if(mMulticastThread3.isRunning() == false)
+            mMulticastThread3.start();
+        if(DragonEyeApplication.getInstance().mUdpClient.isRunning() == false)
+            DragonEyeApplication.getInstance().mUdpClient.start();
+    }
+
+    private void onWifiDisconnected() {
+        mWifiSsid.setText("");
+        mStatusView.setText("WIFI Disconnected !!!");
+
+        clearAllDragonEyeBase();
+
+        if(DragonEyeApplication.getInstance().mUdpClient.isRunning())
+            DragonEyeApplication.getInstance().mUdpClient.stop();
+        if(mMulticastThread2.isRunning())
+            mMulticastThread2.stop();
+        if(mMulticastThread3.isRunning())
+            mMulticastThread3.stop();
     }
 
     @Override
     protected void onStart() {
         super.onStart();
-
         isPaused = false;
-
-        @SuppressLint("WifiManagerLeak") final WifiManager wifiManager = (WifiManager) getApplicationContext().getSystemService(Context.WIFI_SERVICE);
-        if (wifiManager.isWifiEnabled()) { // Wi-Fi adapter is ON
-            WifiInfo wifiInfo = wifiManager.getConnectionInfo();
-
-            if (wifiInfo.getNetworkId() != -1) {
-                if (wifiInfo.getSupplicantState() == SupplicantState.COMPLETED) {
-                    System.out.println("Wifi SSID : " + wifiInfo.getSSID());
-                    TextView wifi_ssid = (TextView) findViewById(R.id.textview_ssid);
-                    wifi_ssid.setText(wifiInfo.getSSID().replace("\"", ""));
-
-                    Thread thread = new Thread(new Runnable() {
-                        @Override
-                        public void run() {
-                            for(DragonEyeBase b : DragonEyeApplication.getInstance().mBaseList) {
-                                DragonEyeApplication.getInstance().requestStatus(b);
-                            }
-                        }
-                    });
-                    thread.start();
-                }
-            }
-        }
     }
 
     @Override
     protected void onPause() {
         super.onPause();
-
         isPaused = true;
     }
 
@@ -769,6 +798,13 @@ public class MainActivity extends AppCompatActivity {
     protected void onDestroy() {
         unregisterReceiver(broadcastReceiver);
         super.onDestroy();
+
+        if (lowLatencyWifiLock != null) {
+            lowLatencyWifiLock.release();
+        }
+        if (highPerfWifiLock != null) {
+            highPerfWifiLock.release();
+        }
     }
 
     private void onUdpRx(String str) {
@@ -872,6 +908,12 @@ public class MainActivity extends AppCompatActivity {
                     mListViewAdapter.notifyDataSetChanged();
                 } else if (intent.hasExtra("baseTriggerTimeout")) { // Trigger timeout
                     mListViewAdapter.notifyDataSetChanged();
+                }
+            } else if(intent.getAction().equals("wifiMsg")) {
+                if(intent.hasExtra("wifiConnected")) {
+                    onWifiConnected(intent.getStringExtra("wifiConnected"));
+                } else if(intent.hasExtra("wifiDisconnected")) {
+                    onWifiDisconnected();
                 }
             }
         }

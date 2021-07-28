@@ -92,6 +92,24 @@ public class UDPClient implements Runnable {
         return msgSend;
     }
 
+    private static byte byteOfInt(int value, int which) {
+        int shift = which * 8;
+        return (byte)(value >> shift);
+    }
+
+    private static InetAddress intToInet(int value) {
+        byte[] bytes = new byte[4];
+        for(int i = 0; i<4; i++) {
+            bytes[i] = byteOfInt(value, i);
+        }
+        try {
+            return InetAddress.getByAddress(bytes);
+        } catch (UnknownHostException e) {
+            // This only happens if the byte array has a bad length
+            return null;
+        }
+    }
+
     @Override
     public void run() {
         running.set(true);
@@ -123,14 +141,14 @@ public class UDPClient implements Runnable {
                 InetAddress localInetAddress = null;
                 InetSocketAddress isa = null;
                 try {
-                    localInetAddress = InetAddress.getByAddress(tmp.array());
+                    localInetAddress = intToInet(addr);
                     isa = new InetSocketAddress(InetAddress.getByAddress(tmp.array()), 0);
                 } catch (UnknownHostException e) {
                     e.printStackTrace();
                 }
 
                 System.out.println("UDPClient - Wifi SSID : " + wifiInfo.getSSID());
-                System.out.println("Bind address " + localInetAddress);
+                System.out.println("Socket address " + localInetAddress);
 
                 if(socket != null) {
                     socket.close();
@@ -140,7 +158,7 @@ public class UDPClient implements Runnable {
                 try {
                     socket = new DatagramSocket();
                     socket.setReuseAddress(true);
-                    socket.bind(isa);
+                    //socket.bind(isa);
                     //socket.setSoTimeout(3000);//设置超时为3s
                 } catch (SocketException e) {
                     e.printStackTrace();
@@ -158,6 +176,7 @@ public class UDPClient implements Runnable {
                 //String RcvMsg = new String(packetRcv.getData(), packetRcv.getOffset(), packetRcv.getLength());
                 //将收到的消息发给主界面
                 Intent intent = new Intent();
+                //intent.setFlags(Intent.FLAG_RECEIVER_FOREGROUND);
                 intent.setAction("udpMsg");
                 intent.putExtra("udpRcvMsg", RcvMsg);
                 mContext.sendBroadcast(intent);
