@@ -263,6 +263,8 @@ public class MainActivity extends AppCompatActivity {
                     break;
                 case STARTED: viewHolder.txtStatus.setTextColor(Color.parseColor("#00FF00"));
                     break;
+                case ERROR: viewHolder.txtStatus.setTextColor(Color.parseColor("#FF0000"));
+                    break;
             }
 /*
             viewHolder.imgCompassCalibration.setOnClickListener(this);
@@ -525,9 +527,10 @@ public class MainActivity extends AppCompatActivity {
                                 b.online();
                                 DragonEyeApplication.getInstance().requestSystemSettings(b);
                                 DragonEyeApplication.getInstance().requestCameraSettings(b);
-                                DragonEyeApplication.getInstance().requestStatus(b);
                                 DragonEyeApplication.getInstance().requestFirmwareVersion(b);
                             }
+                            // Alway request while receive multicast from base ...
+                            DragonEyeApplication.getInstance().requestStatus(b);
                         }
 
                         if(baseHost.length >= 5) {
@@ -824,6 +827,12 @@ public class MainActivity extends AppCompatActivity {
                 b.stopResponseTimer();
                 if(b.getStatus() != DragonEyeBase.Status.STOPPED) {
                     b.stopped();
+                    mListViewAdapter.notifyDataSetChanged();
+                }
+            } else if(s.startsWith("#Error:")) {
+                b.stopResponseTimer();
+                if(b.getStatus() != DragonEyeBase.Status.ERROR) {
+                    b.error();
                     mListViewAdapter.notifyDataSetChanged();
                 }
             } else if(s != null) {

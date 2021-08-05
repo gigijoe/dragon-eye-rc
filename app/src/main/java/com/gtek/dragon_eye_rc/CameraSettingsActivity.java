@@ -82,6 +82,8 @@ public class CameraSettingsActivity extends AppCompatActivity {
                                 editor.putString("camera_id", "camera_1");
                             if (Integer.parseInt(keyValue[1]) == 1)
                                 editor.putString("camera_id", "camera_2");
+                            if (Integer.parseInt(keyValue[1]) == 2)
+                                editor.putString("camera_id", "camera_3");
                         } else if (TextUtils.equals(keyValue[0], "wbmode")) {
                             editor.putString("wbmode", keyValue[1]);
                         } else if (TextUtils.equals(keyValue[0], "tnr-mode")) {
@@ -119,6 +121,8 @@ public class CameraSettingsActivity extends AppCompatActivity {
                     case "camera_1": udpPayload.append("sensor-id=0");
                         break;
                     case "camera_2": udpPayload.append("sensor-id=1");
+                        break;
+                    case "camera_3": udpPayload.append("sensor-id=2");
                         break;
                 }
 

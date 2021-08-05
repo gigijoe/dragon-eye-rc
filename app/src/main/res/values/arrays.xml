@@ -59,11 +59,13 @@
     <string-array name="camera_id_entries">
         <item>Camera 1</item>
         <item>Camera 2</item>
+        <item>USB Camera</item>
     </string-array>
 
     <string-array name="camera_id_values">
         <item>camera_1</item>
         <item>camera_2</item>
+        <item>camera_3</item>
     </string-array>
 
     <string-array name="camera_wb_entries">
