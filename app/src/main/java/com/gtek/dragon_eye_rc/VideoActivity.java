@@ -85,10 +85,10 @@ public class VideoActivity  extends Activity implements IVLCVout.Callback    {
         //options.add("--avcodec-codec=hevc");
         //options.add("--file-logging");
         //options.add("--logfile=vlc-log.txt");
-        options.add("--file-caching=2000");
+        options.add("--file-caching=150");
         options.add("--log-verbose");
         options.add("--low-delay");
-        options.add("--fps=15");
+        options.add("--fps=30");
         //options.add("--rtsp-tcp");
         options.add("--rtsp-timeout=600"); //  Timeout in 10 minutes.
 
@@ -108,12 +108,12 @@ public class VideoActivity  extends Activity implements IVLCVout.Callback    {
 
         Media m = new Media(libvlc, Uri.parse(rtspUrl));
         m.setHWDecoderEnabled(true, false);
-        m.addOption(":network-caching=150");
-        m.addOption(":live-caching=0");
-        m.addOption(":file-caching=0");
+        m.addOption(":network-caching=600");
+        //m.addOption(":live-caching=0");
+        //m.addOption(":file-caching=0");
         //m.addOption(":sout-mux-caching=0");
-        m.addOption(":clock-jitter=0");
-        m.addOption(":clock-synchro=0");
+        m.addOption(":clock-jitter=600");
+        m.addOption(":clock-synchro=600");
         m.addOption(":no-audio");
 
         mMediaPlayer.setMedia(m);
