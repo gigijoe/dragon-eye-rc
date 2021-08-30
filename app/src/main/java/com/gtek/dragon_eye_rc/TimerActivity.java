@@ -118,7 +118,7 @@ public class TimerActivity extends AppCompatActivity {
 
     private void onBaseA() {
         if(mTimerState == thirtySecondState) {
-            if(mOutside == false) { // Outside
+            if(!mOutside) { // Outside
                 mOutside = true;
                 //System.out.println("mCourseCount.get() = " + mCourseCount.get());
                 DragonEyeApplication.getInstance().playPriorityTone(R.raw.r_outside);
@@ -133,7 +133,7 @@ public class TimerActivity extends AppCompatActivity {
                 mTextViewTimerStatus.setText("Course " + mCourseCount.get());
             }
         } else if(mTimerState == speedCourseState) {
-            if(mOutside == false) { // Outside
+            if(!mOutside) { // Outside
                 mOutside = true;
                 //System.out.println("mCourseCount.get() = " + mCourseCount.get());
                 DragonEyeApplication.getInstance().playPriorityTone(R.raw.r_outside);
@@ -320,8 +320,9 @@ public class TimerActivity extends AppCompatActivity {
             }
         });
 
-        IntentFilter mcastRcvIntentFilter = new IntentFilter("mcastMsg");
-        registerReceiver(broadcastReceiver, mcastRcvIntentFilter);
+        registerReceiver(broadcastReceiver, new IntentFilter("mcastMsg"));
+        registerReceiver(broadcastReceiver, new IntentFilter("udpMsg"));
+        registerReceiver(broadcastReceiver, new IntentFilter("usbMsg"));
 
         FloatingActionButton bs = findViewById(R.id.button_start_timer);
         bs.setOnClickListener(new View.OnClickListener() {
@@ -499,22 +500,42 @@ public class TimerActivity extends AppCompatActivity {
         }
     }
 
+    private void onUsbRx(String s) {
+        if(s.charAt(0) == '<' && s.charAt(s.length()-1) == '>') {
+            char base = s.charAt(1);
+            int serNo = Integer.parseInt(s.substring(2, s.length()-1));
+            if(base == 'A' && serNo != serNoA) {
+                if(mRepeatTriggerTick.get() == 0) {
+                    mRepeatTriggerTimer.cancel();
+                    mRepeatTriggerTimer.start();
+                    onBaseA();
+                }
+                serNoA = serNo;
+            }else if(base == 'B' && serNo != serNoB) {
+                if(mRepeatTriggerTick.get() == 0) {
+                    mRepeatTriggerTimer.cancel();
+                    mRepeatTriggerTimer.start();
+                    onBaseB();
+                }
+                serNoB = serNo;
+            }
+        }
+    }
+
     private BroadcastReceiver broadcastReceiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
             if(intent.getAction().equals("udpMsg")) {
                 if (intent.hasExtra("udpRcvMsg")) {
                     onUdpRx(intent.getStringExtra("udpRcvMsg"));
-                } else if (intent.hasExtra("udpSendMsg")) {
-                    System.out.println("UDP TX : " + intent.getStringExtra("udpSendMsg"));
-                } else if (intent.hasExtra("udpPollTimeout")) {
-                    System.out.println("UDP RX Timeout");
                 }
             } else if(intent.getAction().equals("mcastMsg")) {
                 if (intent.hasExtra("mcastRcvMsg")) {
                     onMulticastRx(intent.getStringExtra("mcastRcvMsg"));
-                } else if (intent.hasExtra("mcastSendMsg")) {
-                } else if (intent.hasExtra("mcastPollTimeout")) {
+                }
+            } else if(intent.getAction().equals("usbMsg")) {
+                if (intent.hasExtra("usbRcvMsg")) {
+                    onUsbRx(intent.getStringExtra("usbRcvMsg"));
                 }
             }
         }

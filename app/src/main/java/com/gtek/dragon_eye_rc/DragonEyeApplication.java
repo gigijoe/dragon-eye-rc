@@ -1,25 +1,16 @@
 package com.gtek.dragon_eye_rc;
 
 import android.app.Application;
-import android.content.BroadcastReceiver;
 import android.content.Context;
-import android.content.Intent;
 import android.net.ConnectivityManager;
 import android.net.Network;
 import android.net.NetworkCapabilities;
-import android.net.NetworkInfo;
 import android.net.NetworkRequest;
-import android.net.wifi.WifiInfo;
-import android.net.wifi.WifiManager;
 import android.text.TextUtils;
 import android.util.Log;
 
 import java.util.ArrayList;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicBoolean;
-
-import static java.lang.Thread.sleep;
 
 public class DragonEyeApplication extends Application {
     private static DragonEyeApplication mInstance;
@@ -109,6 +100,16 @@ public class DragonEyeApplication extends Application {
                 return b;
         }
         return null;
+    }
+
+    public void triggerBaseA() {
+        for(DragonEyeBase b : mBaseList) {
+            if(b.getType() == DragonEyeBase.Type.BASE_A) {
+                if (!b.isBaseTrigger())
+                    b.baseTrigger();
+
+            }
+        }
     }
 
     public void addBase(DragonEyeBase b) {
@@ -232,8 +233,6 @@ public class DragonEyeApplication extends Application {
         mInstance = this;
 
         mUdpClient = new UDPClient(getApplicationContext());
-        //mUdpClient.start();
-
         mTonePlayer = new TonePlayer(getApplicationContext());
     }
 

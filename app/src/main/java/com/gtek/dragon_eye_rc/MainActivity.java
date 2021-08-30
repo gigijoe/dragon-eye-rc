@@ -1,37 +1,30 @@
 package com.gtek.dragon_eye_rc;
 
-import androidx.annotation.NonNull;
-import androidx.annotation.RequiresApi;
-import androidx.appcompat.app.AppCompatActivity;
-
 import android.Manifest;
 import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.app.AlertDialog;
+import android.app.PendingIntent;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.IntentFilter;
-import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.graphics.Color;
+import android.hardware.usb.UsbDeviceConnection;
+import android.hardware.usb.UsbManager;
 import android.net.ConnectivityManager;
 import android.net.DhcpInfo;
-import android.net.InetAddresses;
 import android.net.Network;
 import android.net.NetworkCapabilities;
-import android.net.NetworkInfo;
 import android.net.NetworkRequest;
 import android.net.wifi.SupplicantState;
 import android.net.wifi.WifiInfo;
 import android.net.wifi.WifiManager;
 import android.os.Build;
 import android.os.Bundle;
-import android.os.Handler;
-import android.os.HandlerThread;
-import android.os.Looper;
-import android.os.Message;
+import android.provider.SyncStateContract;
 import android.text.TextUtils;
 import android.text.method.LinkMovementMethod;
 import android.text.util.Linkify;
@@ -45,43 +38,37 @@ import android.view.animation.Animation;
 import android.view.animation.AnimationUtils;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
-import android.widget.BaseAdapter;
 import android.widget.ImageView;
 import android.widget.ListView;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import androidx.annotation.NonNull;
+import androidx.annotation.RequiresApi;
+import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
-import androidx.preference.PreferenceManager;
-import androidx.recyclerview.widget.RecyclerView;
 
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
+import com.hoho.android.usbserial.driver.UsbSerialDriver;
+import com.hoho.android.usbserial.driver.UsbSerialPort;
+import com.hoho.android.usbserial.driver.UsbSerialProber;
 
-import org.w3c.dom.Text;
-
-import java.io.File;
 import java.io.IOException;
-import java.io.InputStream;
 import java.math.BigInteger;
 import java.net.DatagramPacket;
-import java.net.DatagramSocket;
 import java.net.InetAddress;
-import java.net.InetSocketAddress;
 import java.net.MulticastSocket;
 import java.net.NetworkInterface;
 import java.net.SocketException;
 import java.net.SocketTimeoutException;
 import java.net.UnknownHostException;
-import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
-import java.util.Enumeration;
+import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
-
-import static android.Manifest.permission.WRITE_EXTERNAL_STORAGE;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -107,7 +94,12 @@ public class MainActivity extends AppCompatActivity {
     private WifiManager.WifiLock highPerfWifiLock;
     private WifiManager.WifiLock lowLatencyWifiLock;
 
-    private boolean isPaused = false;
+    private final AtomicBoolean isPaused = new AtomicBoolean(false);
+
+    static final String INTENT_ACTION_GRANT_USB = BuildConfig.APPLICATION_ID + ".GRANT_USB";
+
+    private UsbSerialPort mUsbSerialPort = null;
+    private UsbSerialThread mUsbSerialThread = null;
 
     private void compassCalibrationDialog(DragonEyeBase b) {
         AlertDialog.Builder MyAlertDialog = new AlertDialog.Builder(this);
@@ -263,6 +255,8 @@ public class MainActivity extends AppCompatActivity {
                     break;
                 case STARTED: viewHolder.txtStatus.setTextColor(Color.parseColor("#00FF00"));
                     break;
+                case TRYING: viewHolder.txtStatus.setTextColor(Color.parseColor("#0000FF"));
+                    break;
                 case ERROR: viewHolder.txtStatus.setTextColor(Color.parseColor("#FF0000"));
                     break;
             }
@@ -403,15 +397,33 @@ public class MainActivity extends AppCompatActivity {
 
             DatagramPacket packet;
             while (running.get()) {
-                if (wifiMgr.isWifiEnabled() == false)
+                if (wifiMgr.isWifiEnabled() == false) {
+                    try {
+                        Thread.sleep(100);
+                    } catch (InterruptedException e) {
+                        e.printStackTrace();
+                    }
                     continue;
+                }
 
                 WifiInfo wifiInfo = wifiMgr.getConnectionInfo();
-                if (wifiInfo.getNetworkId() == -1)
+                if (wifiInfo.getNetworkId() == -1) {
+                    try {
+                        Thread.sleep(100);
+                    } catch (InterruptedException e) {
+                        e.printStackTrace();
+                    }
                     continue;
+                }
 
-                if (wifiInfo.getSupplicantState() != SupplicantState.COMPLETED)
+                if (wifiInfo.getSupplicantState() != SupplicantState.COMPLETED) {
+                    try {
+                        Thread.sleep(100);
+                    } catch (InterruptedException e) {
+                        e.printStackTrace();
+                    }
                     continue;
+                }
 
                 int addr = wifiMgr.getDhcpInfo().ipAddress;
                 if (localAddr != addr || networkId != wifiInfo.getNetworkId()) {
@@ -464,7 +476,7 @@ public class MainActivity extends AppCompatActivity {
                     socket.receive(packet);
                 } catch (SocketTimeoutException e) {
                     //e.printStackTrace();
-                    System.out.println("multicastThread - RX timeout");
+                    //System.out.println("multicastThread - RX timeout");
 /*
                     Intent intent = new Intent();
                     intent.setAction("mcastMsg");
@@ -528,9 +540,15 @@ public class MainActivity extends AppCompatActivity {
                                 DragonEyeApplication.getInstance().requestSystemSettings(b);
                                 DragonEyeApplication.getInstance().requestCameraSettings(b);
                                 DragonEyeApplication.getInstance().requestFirmwareVersion(b);
+                                DragonEyeApplication.getInstance().requestStatus(b);
                             }
                             // Alway request while receive multicast from base ...
-                            DragonEyeApplication.getInstance().requestStatus(b);
+                            /*
+                            if(b.getStatus() != DragonEyeBase.Status.STARTED ||
+                                    b.getStatus() != DragonEyeBase.Status.STOPPED ||
+                                    b.getStatus() != DragonEyeBase.Status.TRYING)
+                                DragonEyeApplication.getInstance().requestStatus(b);
+                             */
                         }
 
                         if(baseHost.length >= 5) {
@@ -546,20 +564,26 @@ public class MainActivity extends AppCompatActivity {
                             mContext.sendBroadcast(intent);
                         }
                     } else if (TextUtils.equals(baseHost[0], "TRIGGER_A")) {
-                        int i = Integer.parseInt(baseHost[1]);
-                        if (i != serNoA) {
-                            if(!isPaused) {
-                                System.out.println("Play tone ...");
-                                DragonEyeApplication.getInstance().playTone(R.raw.smb_jump_small); // R.raw.r_a
+                        if(!mUsbSerialThread.isRunning()) {
+
+                            int i = Integer.parseInt(baseHost[1]);
+                            if (i != serNoA) {
+                                if (!isPaused.get()) {
+                                    System.out.println("Play tone ...");
+                                    DragonEyeApplication.getInstance().playTone(R.raw.smb_jump_small); // R.raw.r_a
+                                }
                                 serNoA = i;
                             }
                         }
                     } else if (TextUtils.equals(baseHost[0], "TRIGGER_B")) {
-                        int i = Integer.parseInt(baseHost[1]);
-                        if (i != serNoB) {
-                            if(!isPaused) {
-                                System.out.println("Play tone ...");
-                                DragonEyeApplication.getInstance().playTone(R.raw.smb_jump_super); // R.raw.r_b
+                        if(mUsbSerialThread.isRunning()) {
+
+                            int i = Integer.parseInt(baseHost[1]);
+                            if (i != serNoB) {
+                                if (!isPaused.get()) {
+                                    System.out.println("Play tone ...");
+                                    DragonEyeApplication.getInstance().playTone(R.raw.smb_jump_super); // R.raw.r_b
+                                }
                                 serNoB = i;
                             }
                         }
@@ -619,14 +643,22 @@ public class MainActivity extends AppCompatActivity {
         bs.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                if(DragonEyeApplication.getInstance().mBaseList.isEmpty())
+                if (DragonEyeApplication.getInstance().mBaseList.isEmpty())
                     return;
 
                 Thread thread = new Thread(new Runnable() {
                     @Override
                     public void run() {
-                        for(DragonEyeBase b : DragonEyeApplication.getInstance().mBaseList) {
+                        for (DragonEyeBase b : DragonEyeApplication.getInstance().mBaseList) {
                             DragonEyeApplication.getInstance().requestStart(b);
+                            b.trying();
+
+                            MainActivity.this.runOnUiThread(new Runnable() {
+                                @Override
+                                public void run() {
+                                    mListViewAdapter.notifyDataSetChanged();
+                                }
+                            });
                         }
                     }
                 });
@@ -638,13 +670,20 @@ public class MainActivity extends AppCompatActivity {
         bp.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                if(DragonEyeApplication.getInstance().mBaseList.isEmpty())
+                if (DragonEyeApplication.getInstance().mBaseList.isEmpty())
                     return;
                 Thread thread = new Thread(new Runnable() {
                     @Override
                     public void run() {
-                        for(DragonEyeBase b : DragonEyeApplication.getInstance().mBaseList) {
+                        for (DragonEyeBase b : DragonEyeApplication.getInstance().mBaseList) {
                             DragonEyeApplication.getInstance().requestStop(b);
+                            b.trying();
+                            MainActivity.this.runOnUiThread(new Runnable() {
+                                @Override
+                                public void run() {
+                                    mListViewAdapter.notifyDataSetChanged();
+                                }
+                            });
                         }
                     }
                 });
@@ -652,14 +691,14 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
-        IntentFilter udpRcvIntentFilter = new IntentFilter("udpMsg");
-        registerReceiver(broadcastReceiver, udpRcvIntentFilter);
+        registerReceiver(broadcastReceiver, new IntentFilter("udpMsg"));
+        registerReceiver(broadcastReceiver, new IntentFilter("baseMsg"));
+        registerReceiver(broadcastReceiver, new IntentFilter("wifiMsg"));
+        registerReceiver(broadcastReceiver, new IntentFilter("usbMsg"));
 
-        IntentFilter baseRcvIntentFilter = new IntentFilter("baseMsg");
-        registerReceiver(broadcastReceiver, baseRcvIntentFilter);
-
-        IntentFilter wifiRcvIntentFilter = new IntentFilter("wifiMsg");
-        registerReceiver(broadcastReceiver, wifiRcvIntentFilter);
+        registerReceiver(usbBroadcastReceiver, new IntentFilter(UsbManager.ACTION_USB_DEVICE_ATTACHED));
+        registerReceiver(usbBroadcastReceiver, new IntentFilter(UsbManager.ACTION_USB_DEVICE_DETACHED));
+        registerReceiver(usbBroadcastReceiver, new IntentFilter(INTENT_ACTION_GRANT_USB));
 
         mWifiSsid = (TextView) findViewById(R.id.textview_ssid);
         mStatusView = (TextView) findViewById(R.id.textview_status);
@@ -685,11 +724,7 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onAvailable(@NonNull final Network network) {
                 super.onAvailable(network);
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                    connectivityManager.bindProcessToNetwork(network);
-                } else {
-                    ConnectivityManager.setProcessDefaultNetwork(network);
-                }
+                connectivityManager.bindProcessToNetwork(network);
                 //connectivityManager.unregisterNetworkCallback(this);
 
                 @SuppressLint("WifiManagerLeak") final WifiManager wifiMgr = (WifiManager) getApplicationContext().getSystemService(Context.WIFI_SERVICE);
@@ -707,8 +742,7 @@ public class MainActivity extends AppCompatActivity {
             }
 
             @Override
-            public void onLost(Network network)
-            {
+            public void onLost(Network network) {
                 System.out.println("Wifi Disconnected ...");
 
                 Intent intent = new Intent(); /* Broadcast to as UDP message ... */
@@ -719,16 +753,19 @@ public class MainActivity extends AppCompatActivity {
         });
 
         mMulticastThread2 = new MulticastThread("224.0.0.2", 9002);
-        //mMulticastThread2.start();
-
         mMulticastThread3 = new MulticastThread("224.0.0.3", 9003);
-        //mMulticastThread3.start();
-/*
-        DragonEyeApplication.getInstance().addBase(new DragonEyeBase(mContext, "BASE_A", "10.0.0.1"));
-        DragonEyeApplication.getInstance().addBase(new DragonEyeBase(mContext,"BASE_B", "172.16.0.1"));
-        DragonEyeApplication.getInstance().addBase(new DragonEyeBase(mContext, "BASE_B", "192.168.0.1"));
-        DragonEyeApplication.getInstance().addBase(new DragonEyeBase(mContext, "BASE_A", "192.168.168.1"));
-*/
+
+        mUsbSerialThread = new UsbSerialThread();
+
+        UsbManager usbManager = (UsbManager) getSystemService(Context.USB_SERVICE);
+        List<UsbSerialDriver> availableDrivers = UsbSerialProber.getDefaultProber().findAllDrivers(usbManager);
+        if (!availableDrivers.isEmpty()) {
+            try {
+                ConnectUsbDevice(null);
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
     }
 
     private void clearAllDragonEyeBase() {
@@ -739,6 +776,7 @@ public class MainActivity extends AppCompatActivity {
         mListViewAdapter.notifyDataSetChanged();
     }
 
+    @SuppressLint("SetTextI18n")
     private void onWifiConnected(String ssid) {
         if (TextUtils.equals(mWifiSsid.getText(), ssid)) { // Connection changed
             clearAllDragonEyeBase();
@@ -761,19 +799,20 @@ public class MainActivity extends AppCompatActivity {
         //System.out.println("DNS 2 : " + stringAddress(dhcp.dns2));
 
         mWifiSsid.setText(ssid);
-        mStatusView.setText("Base Scaning ...");
+        mStatusView.setText("Base Scanning ...");
 
-        if(mMulticastThread2.isRunning() == false)
+        if(!mMulticastThread2.isRunning())
             mMulticastThread2.start();
-        if(mMulticastThread3.isRunning() == false)
+        if(!mMulticastThread3.isRunning())
             mMulticastThread3.start();
-        if(DragonEyeApplication.getInstance().mUdpClient.isRunning() == false)
+        if(!DragonEyeApplication.getInstance().mUdpClient.isRunning())
             DragonEyeApplication.getInstance().mUdpClient.start();
     }
 
+    @SuppressLint("SetTextI18n")
     private void onWifiDisconnected() {
-        mWifiSsid.setText("");
-        mStatusView.setText("WIFI Disconnected !!!");
+        mWifiSsid.setText("WIFI Disconnected !!!");
+        mStatusView.setText("All bases off line ...");
 
         clearAllDragonEyeBase();
 
@@ -788,19 +827,41 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onStart() {
         super.onStart();
-        isPaused = false;
+        isPaused.set(false);
     }
 
     @Override
     protected void onPause() {
         super.onPause();
-        isPaused = true;
+        isPaused.set(true);
+    }
+
+    @Override
+    protected void onPostResume() {
+        super.onPostResume();
+        isPaused.set(false);
+
+        if(mUsbSerialPort != null && mUsbSerialPort.isOpen()) {
+            if (!mUsbSerialThread.isRunning())
+                mUsbSerialThread.start();
+        }
     }
 
     @Override
     protected void onDestroy() {
-        unregisterReceiver(broadcastReceiver);
         super.onDestroy();
+
+        if(DragonEyeApplication.getInstance().mUdpClient.isRunning())
+            DragonEyeApplication.getInstance().mUdpClient.stop();
+        if(mMulticastThread2.isRunning())
+            mMulticastThread2.stop();
+        if(mMulticastThread3.isRunning())
+            mMulticastThread3.stop();
+        if (mUsbSerialThread.isRunning())
+            mUsbSerialThread.stop();
+
+        unregisterReceiver(usbBroadcastReceiver);
+        unregisterReceiver(broadcastReceiver);
 
         if (lowLatencyWifiLock != null) {
             lowLatencyWifiLock.release();
@@ -885,7 +946,7 @@ public class MainActivity extends AppCompatActivity {
                     int serNo = Integer.parseInt(s.substring(2, s.length()-1));
                     if((base == 'A' && serNo != serNoA) || (base == 'B' && serNo != serNoB)) {
                         if(!b.isBaseTrigger()) {
-                            b.baseTrigger();
+                            b.baseTrigger(); // Color RED of base latter A or B only
                             mListViewAdapter.notifyDataSetChanged();
                         }
                     }
@@ -905,11 +966,9 @@ public class MainActivity extends AppCompatActivity {
             if(intent.getAction().equals("udpMsg")) {
                 if (intent.hasExtra("udpRcvMsg")) {
                     onUdpRx(intent.getStringExtra("udpRcvMsg"));
-                } else if (intent.hasExtra("udpSendMsg")) {
-                    System.out.println("UDP TX : " + intent.getStringExtra("udpSendMsg"));
-                } else if (intent.hasExtra("udpPollTimeout")) {
-                    System.out.println("UDP RX Timeout");
                 }
+            } else if(intent.getAction().equals("usbMsg")) {
+                // Nothing to do here
             } else if(intent.getAction().equals("baseMsg")) {
                 if (intent.hasExtra("baseResponseTimeout")) { // base has no response of UDP request
                     mListViewAdapter.notifyDataSetChanged();
@@ -924,6 +983,199 @@ public class MainActivity extends AppCompatActivity {
                 } else if(intent.hasExtra("wifiDisconnected")) {
                     onWifiDisconnected();
                 }
+            }
+        }
+    };
+
+    public class UsbSerialThread implements Runnable {
+        private Thread worker;
+        private final AtomicBoolean running = new AtomicBoolean(false);
+
+        public UsbSerialThread() {
+            super();
+        }
+
+        public boolean isRunning() {
+            return running.get();
+        }
+
+        public void interrupt() {
+            running.set(false);
+            worker.interrupt();
+        }
+
+        public void start() {
+            worker = new Thread(this);
+            worker.start();
+        }
+
+        public void stop() {
+            running.set(false);
+        }
+
+        @Override
+        public void run() {
+            running.set(true);
+
+            System.out.println("UsbSerialThread - Started ...");
+
+            while(running.get()) {
+                byte[] buffer = new byte[1024];
+                int r = 0;
+                try {
+                    r = mUsbSerialPort.read(buffer, 1000);
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+
+                if(r <= 0)
+                    continue;
+
+                String s = new String(buffer, StandardCharsets.UTF_8).split("\0")[0];
+
+                System.out.println("UsbSerial RX : " + s);
+
+                String ss[] = s.split(">");
+                for(String cmd : ss) {
+                    int h = cmd.indexOf("<");
+                    if(h < 0)
+                        continue; // Command format is <...>
+
+                    char base = cmd.charAt(h + 1);
+                    int serNo = Integer.parseInt(cmd.substring(h + 2, cmd.length()));
+                    String msg = new String(cmd.substring(h) + ">");
+                    if (base == 'A' && serNo != serNoA) {
+                        if (!isPaused.get()) {
+                            System.out.println("Play tone ...");
+                            DragonEyeApplication.getInstance().playTone(R.raw.smb_jump_small); // R.raw.r_a
+                        }
+                        serNoA = serNo;
+
+                        Intent intent = new Intent();
+                        intent.setFlags(Intent.FLAG_RECEIVER_FOREGROUND);
+                        intent.setAction("usbMsg");
+                        intent.putExtra("usbRcvMsg", msg);
+                        mContext.sendBroadcast(intent);
+
+                        runOnUiThread(new Runnable() {
+                            @Override
+                            public void run() {
+                                Toast.makeText(mActivity, "UsbSerial RX : " + msg, Toast.LENGTH_SHORT).show();
+                            }
+                        });
+
+                        continue;
+                    }
+
+                    if (base == 'B' && serNo != serNoB) {
+                        if (!isPaused.get()) {
+                            System.out.println("Play tone ...");
+                            DragonEyeApplication.getInstance().playTone(R.raw.smb_jump_super); // R.raw.r_b
+                        }
+                        serNoB = serNo;
+
+                        Intent intent = new Intent();
+                        intent.setFlags(Intent.FLAG_RECEIVER_FOREGROUND);
+                        intent.setAction("usbMsg");
+                        intent.putExtra("usbRcvMsg", msg);
+                        mContext.sendBroadcast(intent);
+
+                        runOnUiThread(new Runnable() {
+                            @Override
+                            public void run() {
+                                Toast.makeText(mActivity, "UsbSerial RX : " + msg, Toast.LENGTH_SHORT).show();
+                            }
+                        });
+                    }
+                }
+            }
+
+            running.set(false);
+
+            System.out.println("UsbSerialThread - Stopped ...");
+        }
+    }
+
+    private void ConnectUsbDevice(Boolean permissionGranted) throws IOException {
+        UsbManager usbManager = (UsbManager) getSystemService(Context.USB_SERVICE);
+        List<UsbSerialDriver> availableDrivers = UsbSerialProber.getDefaultProber().findAllDrivers(usbManager);
+        if (availableDrivers.isEmpty()) {
+            Toast.makeText(mContext,"No USB Device available !!!",Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        // Open a connection to the first available driver.
+        UsbSerialDriver driver = availableDrivers.get(0);
+        UsbDeviceConnection usbConnection = usbManager.openDevice(driver.getDevice());
+
+        if(usbConnection == null && permissionGranted == null && !usbManager.hasPermission(driver.getDevice())) {
+            PendingIntent usbPermissionIntent = PendingIntent.getBroadcast(getApplicationContext(), 0, new Intent(INTENT_ACTION_GRANT_USB), 0);
+            usbManager.requestPermission(driver.getDevice(), usbPermissionIntent);
+            // USB request permission
+            return;
+        }
+        if(usbConnection == null) {
+            if (!usbManager.hasPermission(driver.getDevice()))
+                Toast.makeText(mContext,"USB permission denied !!!",Toast.LENGTH_SHORT).show();
+            else
+                Toast.makeText(mContext,"USB open failed !!!",Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        Toast.makeText(mContext,"USB Device Connected !!!",Toast.LENGTH_SHORT).show();
+
+        mUsbSerialPort = driver.getPorts().get(0); // Most devices have just one port (port 0)
+        mUsbSerialPort.open(usbConnection);
+        mUsbSerialPort.setParameters(9600, 8, UsbSerialPort.STOPBITS_1, UsbSerialPort.PARITY_NONE);
+
+        if(!mUsbSerialThread.isRunning())
+            mUsbSerialThread.start();
+    }
+
+    private void UsbSerialWrite(byte [] data) {
+        if(!mUsbSerialThread.isRunning())
+            return;
+
+        try {
+            mUsbSerialPort.write(data, 100);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private BroadcastReceiver usbBroadcastReceiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            switch (intent.getAction()) {
+                case UsbManager.ACTION_USB_DEVICE_ATTACHED:
+                    Toast.makeText(mContext, "USB Device Attached", Toast.LENGTH_SHORT).show();
+                    try {
+                        ConnectUsbDevice(null);
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
+                    break;
+                case UsbManager.ACTION_USB_DEVICE_DETACHED:
+                    Toast.makeText(mContext, "USB Device Detached", Toast.LENGTH_SHORT).show();
+                    if (mUsbSerialPort != null && mUsbSerialPort.isOpen()) {
+                        if (mUsbSerialThread.isRunning())
+                            mUsbSerialThread.stop();
+                        try {
+                            mUsbSerialPort.close();
+                        } catch (IOException e) {
+                            e.printStackTrace();
+                        }
+                    }
+                    break;
+                case INTENT_ACTION_GRANT_USB:
+                    //Toast.makeText(mContext, "INTENT_ACTION_GRANT_USB", Toast.LENGTH_SHORT).show();
+                    Boolean granted = intent.getBooleanExtra(UsbManager.EXTRA_PERMISSION_GRANTED, false);
+                    try {
+                        ConnectUsbDevice(granted);
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
+                    break;
             }
         }
     };

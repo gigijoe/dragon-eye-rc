@@ -82,6 +82,7 @@ public class DragonEyeBase {
         ONLINE,
         STOPPED,
         STARTED,
+        TRYING,
         ERROR;
 
         @NonNull
@@ -92,6 +93,7 @@ public class DragonEyeBase {
                 case ONLINE: return "On Line";
                 case STOPPED: return "Stopped";
                 case STARTED: return "Started";
+                case TRYING: return "Trying";
                 case ERROR: return "Error";
             }
             return "Unknown Status";
@@ -164,6 +166,7 @@ public class DragonEyeBase {
     public void online() { mStatus = Status.ONLINE; }
     public void stopped() { mStatus = Status.STOPPED; }
     public void started() { mStatus = Status.STARTED; }
+    public void trying() { mStatus = Status.TRYING; }
     public void error() { mStatus = Status.ERROR; }
 
     public void reset() {

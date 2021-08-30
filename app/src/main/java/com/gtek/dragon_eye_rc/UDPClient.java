@@ -77,16 +77,15 @@ public class UDPClient implements Runnable {
 
         try {
             socket.send(packetSend);
-
+/*
             Intent intent = new Intent();
             intent.setAction("udpMsg");
             intent.putExtra("udpSendMsg", msgSend);
             mContext.sendBroadcast(intent);
-            Log.i("Send", msgSend);
-
+*/
         } catch (IOException e) {
             e.printStackTrace();
-            Log.i("UDPClient", "Send packet fail !!!");
+            //Log.i("UDPClient", "Send packet fail !!!");
         }
 
         return msgSend;
@@ -121,15 +120,33 @@ public class UDPClient implements Runnable {
         @SuppressLint("WifiManagerLeak") final WifiManager wifiManager = (WifiManager) mContext.getSystemService(Context.WIFI_SERVICE);
 
         while (running.get()) {
-            if(wifiManager.isWifiEnabled() == false)
+            if(wifiManager.isWifiEnabled() == false) {
+                try {
+                    Thread.sleep(100);
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
                 continue;
+            }
 
             WifiInfo wifiInfo = wifiManager.getConnectionInfo();
-            if (wifiInfo.getNetworkId() == -1)
+            if (wifiInfo.getNetworkId() == -1) {
+                try {
+                    Thread.sleep(100);
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
                 continue;
+            }
 
-            if (wifiInfo.getSupplicantState() != SupplicantState.COMPLETED)
+            if (wifiInfo.getSupplicantState() != SupplicantState.COMPLETED) {
+                try {
+                    Thread.sleep(100);
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
                 continue;
+            }
 
             int addr = wifiManager.getDhcpInfo().ipAddress;
             if(addr != localAddr || networkId != wifiInfo.getNetworkId()) {
@@ -176,7 +193,7 @@ public class UDPClient implements Runnable {
                 //String RcvMsg = new String(packetRcv.getData(), packetRcv.getOffset(), packetRcv.getLength());
                 //将收到的消息发给主界面
                 Intent intent = new Intent();
-                //intent.setFlags(Intent.FLAG_RECEIVER_FOREGROUND);
+                intent.setFlags(Intent.FLAG_RECEIVER_FOREGROUND);
                 intent.setAction("udpMsg");
                 intent.putExtra("udpRcvMsg", RcvMsg);
                 mContext.sendBroadcast(intent);
