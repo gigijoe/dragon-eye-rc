@@ -576,7 +576,7 @@ public class MainActivity extends AppCompatActivity {
                             }
                         }
                     } else if (TextUtils.equals(baseHost[0], "TRIGGER_B")) {
-                        if(mUsbSerialThread.isRunning()) {
+                        if(!mUsbSerialThread.isRunning()) {
 
                             int i = Integer.parseInt(baseHost[1]);
                             if (i != serNoB) {
@@ -1029,6 +1029,9 @@ public class MainActivity extends AppCompatActivity {
                 }
 
                 if(r <= 0)
+                    continue;
+
+                if(buffer[0] != '<')
                     continue;
 
                 String s = new String(buffer, StandardCharsets.UTF_8).split("\0")[0];
