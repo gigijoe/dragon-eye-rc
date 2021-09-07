@@ -442,65 +442,9 @@ public class TimerActivity extends AppCompatActivity {
         }
     }
 
-    private void onUdpRx(String str) {
-        System.out.println("UDP RX : " + str);
-        int index = str.indexOf(':');
-        String addr = str.substring(0, index);
-        String s = str.substring(index + 1);
-        DragonEyeBase b = DragonEyeApplication.getInstance().findBaseByAddress(addr);
-        if (b != null) {
-            if(s != null) {
-                if(s.charAt(0) == '<' && s.charAt(s.length()-1) == '>') {
-                    char base = s.charAt(1);
-                    int serNo = Integer.parseInt(s.substring(2, s.length()-1));
-                    if(base == 'A' && serNo != serNoA) {
-                        if(mRepeatTriggerTick.get() == 0) {
-                            mRepeatTriggerTimer.cancel();
-                            mRepeatTriggerTimer.start();
-                            onBaseA();
-                        }
-                        serNoA = serNo;
-                    }else if(base == 'B' && serNo != serNoB) {
-                        if(mRepeatTriggerTick.get() == 0) {
-                            mRepeatTriggerTimer.cancel();
-                            mRepeatTriggerTimer.start();
-                            onBaseB();
-                        }
-                        serNoB = serNo;
-                    }
-                }
-            }
-        }
-    }
-
-    private void onMulticastRx(String str) {
-        String baseHost[] = str.split(":");
-        if (baseHost.length >= 2) {
-            if (TextUtils.equals(baseHost[0], "TRIGGER_A")) {
-                int i = Integer.parseInt(baseHost[1]);
-                if (i != serNoA) {
-                    if(mRepeatTriggerTick.get() == 0) {
-                        mRepeatTriggerTimer.cancel();
-                        mRepeatTriggerTimer.start();
-                        onBaseA();
-                    }
-                    serNoA = i;
-                }
-            } else if (TextUtils.equals(baseHost[0], "TRIGGER_B")) {
-                int i = Integer.parseInt(baseHost[1]);
-                if(i != serNoB) {
-                    if(mRepeatTriggerTick.get() == 0) {
-                        mRepeatTriggerTimer.cancel();
-                        mRepeatTriggerTimer.start();
-                        onBaseB();
-                    }
-                    serNoB = i;
-                }
-            }
-        }
-    }
-
-    private void onUsbRx(String s) {
+    private void messageHandler(String s) {
+        if(TextUtils.isEmpty(s))
+            return;
         if(s.charAt(0) == '<' && s.charAt(s.length()-1) == '>') {
             char base = s.charAt(1);
             int serNo = Integer.parseInt(s.substring(2, s.length()-1));
@@ -520,6 +464,35 @@ public class TimerActivity extends AppCompatActivity {
                 serNoB = serNo;
             }
         }
+    }
+
+    private void onUdpRx(String str) {
+        System.out.println("UDP RX : " + str);
+        int index = str.indexOf(':');
+        String addr = str.substring(0, index); // Address insert front by UDPClient
+        String s = str.substring(index + 1);
+        if(TextUtils.isEmpty(addr) || TextUtils.isEmpty(s))
+            return;
+        DragonEyeBase b = DragonEyeApplication.getInstance().findBaseByAddress(addr);
+        if (b != null)
+            messageHandler(s);
+    }
+
+    private void onMulticastRx(String str) {
+        System.out.println("Multicast RX : " + str);
+        int index = str.indexOf(':');
+        String addr = str.substring(0, index); // Address insert front by MulticastThread
+        String s = str.substring(index + 1);
+        if(TextUtils.isEmpty(addr) || TextUtils.isEmpty(s))
+            return;
+        DragonEyeBase b = DragonEyeApplication.getInstance().findBaseByAddress(addr);
+        if (b != null)
+            messageHandler(s);
+    }
+
+    private void onUsbRx(String s) {
+        System.out.println("USB RX : " + s);
+        messageHandler(s);
     }
 
     private BroadcastReceiver broadcastReceiver = new BroadcastReceiver() {

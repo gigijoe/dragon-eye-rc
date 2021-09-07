@@ -24,8 +24,6 @@ import java.util.concurrent.atomic.AtomicBoolean;
  * Created by lenovo on 2016/2/23.
  */
 public class UDPClient implements Runnable {
-    //final static int udpPort = 9999;
-    //final static String hostIp = "192.168.1.4";
     private Context mContext;
     private static DatagramSocket socket = null;
     private static DatagramPacket packetSend, packetRcv;
@@ -58,7 +56,6 @@ public class UDPClient implements Runnable {
         running.set(false);
     }
 
-    //发送消息
     public String send(String hostIp, int udpPort, String msgSend) {
         InetAddress hostAddress = null;
 
@@ -68,7 +65,7 @@ public class UDPClient implements Runnable {
         try {
             hostAddress = InetAddress.getByName(hostIp);
         } catch (UnknownHostException e) {
-            Log.i("UDPClient", "Unknown host");
+            //Log.i("UDPClient", "Unknown host");
             e.printStackTrace();
             return null;
         }
@@ -188,16 +185,16 @@ public class UDPClient implements Runnable {
             try {
                 socket.setSoTimeout(3000);//设置超时为3s
                 socket.receive(packetRcv);
-                //packetRcv.getAddress().getHostAddress()
-                String RcvMsg = packetRcv.getAddress().getHostAddress() + ":" + new String(packetRcv.getData(), packetRcv.getOffset(), packetRcv.getLength());
-                //String RcvMsg = new String(packetRcv.getData(), packetRcv.getOffset(), packetRcv.getLength());
-                //将收到的消息发给主界面
+                String s = new String(packetRcv.getData(), packetRcv.getOffset(), packetRcv.getLength());
+
+                System.out.println("UDP receive : " + s);
+
                 Intent intent = new Intent();
                 intent.setFlags(Intent.FLAG_RECEIVER_FOREGROUND);
                 intent.setAction("udpMsg");
-                intent.putExtra("udpRcvMsg", RcvMsg);
+                intent.putExtra("udpRcvMsg", packetRcv.getAddress().getHostAddress() + ":" + s);
                 mContext.sendBroadcast(intent);
-                Log.i("Rcv", RcvMsg);
+                //Log.i("Rcv", RcvMsg);
             } catch (SocketTimeoutException e) {
                 /*
                 Intent intent = new Intent();
