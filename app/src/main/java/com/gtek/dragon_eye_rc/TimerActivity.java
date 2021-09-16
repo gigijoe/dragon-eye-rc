@@ -442,7 +442,7 @@ public class TimerActivity extends AppCompatActivity {
         }
     }
 
-    private void messageHandler(String s) {
+    private void triggerHandler(String s) {
         if(TextUtils.isEmpty(s))
             return;
         if(s.charAt(0) == '<' && s.charAt(s.length()-1) == '>') {
@@ -475,7 +475,7 @@ public class TimerActivity extends AppCompatActivity {
             return;
         DragonEyeBase b = DragonEyeApplication.getInstance().findBaseByAddress(addr);
         if (b != null)
-            messageHandler(s);
+            triggerHandler(s);
     }
 
     private void onMulticastRx(String str) {
@@ -487,12 +487,12 @@ public class TimerActivity extends AppCompatActivity {
             return;
         DragonEyeBase b = DragonEyeApplication.getInstance().findBaseByAddress(addr);
         if (b != null)
-            messageHandler(s);
+            triggerHandler(s);
     }
 
     private void onUsbRx(String s) {
         System.out.println("USB RX : " + s);
-        messageHandler(s);
+        triggerHandler(s);
     }
 
     private BroadcastReceiver broadcastReceiver = new BroadcastReceiver() {
