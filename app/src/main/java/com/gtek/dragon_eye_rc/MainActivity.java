@@ -24,6 +24,7 @@ import android.net.wifi.WifiInfo;
 import android.net.wifi.WifiManager;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.PowerManager;
 import android.provider.SyncStateContract;
 import android.text.TextUtils;
 import android.text.method.LinkMovementMethod;
@@ -472,7 +473,7 @@ public class MainActivity extends AppCompatActivity {
                 packet = new DatagramPacket(buf, buf.length);
 
                 try {
-                    socket.setSoTimeout(2000);
+                    socket.setSoTimeout(100);
                     socket.receive(packet);
                 } catch (SocketTimeoutException e) {
                     //e.printStackTrace();
@@ -497,12 +498,21 @@ public class MainActivity extends AppCompatActivity {
 
                 String s = new String(packet.getData(), packet.getOffset(), packet.getLength());
                 System.out.println("Multicast receive : " + s);
-
+/*
                 Intent intent = new Intent();
                 intent.setFlags(Intent.FLAG_RECEIVER_FOREGROUND);
                 intent.setAction("mcastMsg");
                 intent.putExtra("mcastRcvMsg", packet.getAddress().getHostAddress() + ":" + s);
                 mContext.sendBroadcast(intent);
+*/
+                Activity a = DragonEyeApplication.getInstance().getActivity();
+                if(a != null) {
+                    if (TextUtils.equals(a.getClass().getSimpleName(), "MainActivity")) {
+                        MainActivity.this.onMulticastRx(packet.getAddress().getHostAddress(), s);
+                    } else if (TextUtils.equals(a.getClass().getSimpleName(), "TimerActivity")) {
+                        ((TimerActivity) a).onMulticastRx(packet.getAddress().getHostAddress(), s);
+                    }
+                }
 
                 String baseHost[] = s.split(":");
                 if (baseHost.length >= 2) {
@@ -648,11 +658,11 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
-        registerReceiver(broadcastReceiver, new IntentFilter("mcastMsg"));
+        //registerReceiver(broadcastReceiver, new IntentFilter("mcastMsg"));
         registerReceiver(broadcastReceiver, new IntentFilter("udpMsg"));
         registerReceiver(broadcastReceiver, new IntentFilter("baseMsg"));
         registerReceiver(broadcastReceiver, new IntentFilter("wifiMsg"));
-        registerReceiver(broadcastReceiver, new IntentFilter("usbMsg"));
+        //registerReceiver(broadcastReceiver, new IntentFilter("usbMsg"));
 
         registerReceiver(usbBroadcastReceiver, new IntentFilter(UsbManager.ACTION_USB_DEVICE_ATTACHED));
         registerReceiver(usbBroadcastReceiver, new IntentFilter(UsbManager.ACTION_USB_DEVICE_DETACHED));
@@ -784,18 +794,21 @@ public class MainActivity extends AppCompatActivity {
 
     @Override
     protected void onStart() {
+        System.out.println("onStart()");
         super.onStart();
         isPaused.set(false);
     }
 
     @Override
     protected void onPause() {
+        System.out.println("onPause()");
         super.onPause();
         isPaused.set(true);
     }
 
     @Override
     protected void onPostResume() {
+        System.out.println("onPostResume()");
         super.onPostResume();
         isPaused.set(false);
 
@@ -840,7 +853,13 @@ public class MainActivity extends AppCompatActivity {
                 }
                 if (!b.isBaseTrigger()) {
                     b.baseTrigger(); // Color RED of base latter A or B only
-                    mListViewAdapter.notifyDataSetChanged();
+                    //mListViewAdapter.notifyDataSetChanged();
+                    MainActivity.this.runOnUiThread(new Runnable() {
+                        @Override
+                        public void run() {
+                            mListViewAdapter.notifyDataSetChanged();
+                        }
+                    });
                 }
                 serNoA = serNo;
             }
@@ -852,7 +871,13 @@ public class MainActivity extends AppCompatActivity {
                 }
                 if (!b.isBaseTrigger()) {
                     b.baseTrigger(); // Color RED of base latter A or B only
-                    mListViewAdapter.notifyDataSetChanged();
+                    //mListViewAdapter.notifyDataSetChanged();
+                    MainActivity.this.runOnUiThread(new Runnable() {
+                        @Override
+                        public void run() {
+                            mListViewAdapter.notifyDataSetChanged();
+                        }
+                    });
                 }
                 serNoB = serNo;
             }
@@ -933,13 +958,16 @@ public class MainActivity extends AppCompatActivity {
                         b.started();
                         mListViewAdapter.notifyDataSetChanged();
                     }
-                } else if(s.charAt(0) == '<' && s.charAt(s.length()-1) == '>') {
+                }
+/*
+                else if(s.charAt(0) == '<' && s.charAt(s.length()-1) == '>') {
                     onBaseTrigger(b, s);
                 }
+ */
             }
         }
     }
-
+/*
     private void onMulticastRx(String str) {
         System.out.println("Multicast RX : " + str);
         int index = str.indexOf(':');
@@ -965,7 +993,33 @@ public class MainActivity extends AppCompatActivity {
                 }
             }
         }
-
+    }
+*/
+    void onMulticastRx(String addr, String s) {
+        if (s.charAt(0) == '<' && s.charAt(s.length() - 1) == '>') {
+            DragonEyeBase b = DragonEyeApplication.getInstance().findBaseByAddress(addr);
+            if (b != null)
+                onBaseTrigger(b, s);
+        } else if (s.startsWith("BASE_A:") || s.startsWith("BASE_B:")) {
+            String baseHost[] = s.split(":");
+            if (baseHost.length >= 5) {
+                //System.out.println(baseHost[0]);
+                DragonEyeBase b = DragonEyeApplication.getInstance().findBaseByAddress(baseHost[1]);
+                if (b != null) {
+                    b.setFps(Integer.parseInt(baseHost[2]));
+                    b.setTemperature(Integer.parseInt(baseHost[3]));
+                    b.setGpuLoad(Integer.parseInt(baseHost[4]));
+                    b.stopResponseTimer();
+                    //mListViewAdapter.notifyDataSetChanged();
+                    MainActivity.this.runOnUiThread(new Runnable() {
+                        @Override
+                        public void run() {
+                            mListViewAdapter.notifyDataSetChanged();
+                        }
+                    });
+                }
+            }
+        }
     }
 
     private BroadcastReceiver broadcastReceiver = new BroadcastReceiver() {
@@ -975,12 +1029,15 @@ public class MainActivity extends AppCompatActivity {
                 if (intent.hasExtra("udpRcvMsg")) {
                     onUdpRx(intent.getStringExtra("udpRcvMsg"));
                 }
+/*
             } else if(intent.getAction().equals("mcastMsg")) {
                 if (intent.hasExtra("mcastRcvMsg")) {
                     onMulticastRx(intent.getStringExtra("mcastRcvMsg"));
                 }
+
             } else if(intent.getAction().equals("usbMsg")) {
                 // Nothing to do here
+ */
             } else if(intent.getAction().equals("baseMsg")) {
                 if (intent.hasExtra("baseResponseTimeout")) { // base has no response of UDP request
                     mListViewAdapter.notifyDataSetChanged();
@@ -1059,19 +1116,25 @@ public class MainActivity extends AppCompatActivity {
                     char base = cmd.charAt(h + 1);
                     int serNo = Integer.parseInt(cmd.substring(h + 2, cmd.length()));
                     String msg = new String(cmd.substring(h) + ">");
+
+                    Activity a = DragonEyeApplication.getInstance().getActivity();
+
                     if (base == 'A' && serNo != serNoA) {
-                        if (!isPaused.get()) {
+                        if(TextUtils.equals(a.getClass().getSimpleName(), "MainActivity")) {
                             System.out.println("Play tone ...");
                             DragonEyeApplication.getInstance().playTone(R.raw.smb_jump_small); // R.raw.r_a
+                        } else if(TextUtils.equals(a.getClass().getSimpleName(), "TimerActivity")) {
+                            ((TimerActivity)a).onUsbRx(s);
                         }
-                        serNoA = serNo;
 
+                        serNoA = serNo;
+/*
                         Intent intent = new Intent();
                         intent.setFlags(Intent.FLAG_RECEIVER_FOREGROUND);
                         intent.setAction("usbMsg");
                         intent.putExtra("usbRcvMsg", msg);
                         mContext.sendBroadcast(intent);
-
+                        */
                         runOnUiThread(new Runnable() {
                             @Override
                             public void run() {
@@ -1083,18 +1146,20 @@ public class MainActivity extends AppCompatActivity {
                     }
 
                     if (base == 'B' && serNo != serNoB) {
-                        if (!isPaused.get()) {
+                        if(TextUtils.equals(a.getClass().getSimpleName(), "MainActivity")) {
                             System.out.println("Play tone ...");
                             DragonEyeApplication.getInstance().playTone(R.raw.smb_jump_super); // R.raw.r_b
+                        } else if(TextUtils.equals(a.getClass().getSimpleName(), "TimerActivity")) {
+                            ((TimerActivity)a).onUsbRx(s);
                         }
                         serNoB = serNo;
-
+/*
                         Intent intent = new Intent();
                         intent.setFlags(Intent.FLAG_RECEIVER_FOREGROUND);
                         intent.setAction("usbMsg");
                         intent.putExtra("usbRcvMsg", msg);
                         mContext.sendBroadcast(intent);
-
+*/
                         runOnUiThread(new Runnable() {
                             @Override
                             public void run() {

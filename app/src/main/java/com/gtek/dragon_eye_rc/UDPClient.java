@@ -7,6 +7,7 @@ import android.net.DhcpInfo;
 import android.net.wifi.SupplicantState;
 import android.net.wifi.WifiInfo;
 import android.net.wifi.WifiManager;
+import android.os.PowerManager;
 import android.util.Log;
 
 import java.io.IOException;
@@ -183,17 +184,22 @@ public class UDPClient implements Runnable {
                 continue;
             
             try {
-                socket.setSoTimeout(3000);//设置超时为3s
+                socket.setSoTimeout(100);
                 socket.receive(packetRcv);
                 String s = new String(packetRcv.getData(), packetRcv.getOffset(), packetRcv.getLength());
 
                 System.out.println("UDP receive : " + s);
+
+                PowerManager pm = (PowerManager) mContext.getSystemService(Context.POWER_SERVICE);
+                if(!pm.isInteractive())
+                    continue;
 
                 Intent intent = new Intent();
                 intent.setFlags(Intent.FLAG_RECEIVER_FOREGROUND);
                 intent.setAction("udpMsg");
                 intent.putExtra("udpRcvMsg", packetRcv.getAddress().getHostAddress() + ":" + s);
                 mContext.sendBroadcast(intent);
+
                 //Log.i("Rcv", RcvMsg);
             } catch (SocketTimeoutException e) {
                 /*

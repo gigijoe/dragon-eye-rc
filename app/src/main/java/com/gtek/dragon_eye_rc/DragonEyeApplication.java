@@ -1,15 +1,19 @@
 package com.gtek.dragon_eye_rc;
 
+import android.app.Activity;
 import android.app.Application;
 import android.content.Context;
 import android.net.ConnectivityManager;
 import android.net.Network;
 import android.net.NetworkCapabilities;
 import android.net.NetworkRequest;
+import android.os.PowerManager;
 import android.text.TextUtils;
 import android.util.Log;
 
+import java.lang.reflect.Field;
 import java.util.ArrayList;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 public class DragonEyeApplication extends Application {
@@ -27,6 +31,10 @@ public class DragonEyeApplication extends Application {
     ArrayList<Integer> mToneArray = null;
 
     public void playTone(int resourceId) {
+        PowerManager pm = (PowerManager) getSystemService(Context.POWER_SERVICE);
+        if(!pm.isInteractive())
+            return;
+
         if(mTonePlayer.isPlaying()) {
             if(isPriorityPlaying.get())
                 return;
@@ -56,6 +64,10 @@ public class DragonEyeApplication extends Application {
     }
 
     public void playTone(ArrayList<Integer> a) {
+        PowerManager pm = (PowerManager) getSystemService(Context.POWER_SERVICE);
+        if(!pm.isInteractive())
+            return;
+
         mToneArray = a;
         Thread thread = new Thread(new Runnable() {
             @Override
@@ -242,5 +254,35 @@ public class DragonEyeApplication extends Application {
         mUdpClient.stop();
         mTonePlayer.stopPlay();
         super.onTerminate();
+    }
+
+    public Activity getActivity() {
+        try {
+            Class activityThreadClass = Class.forName("android.app.ActivityThread");
+            Object activityThread = activityThreadClass.getMethod("currentActivityThread").invoke(null);
+            Field activitiesField = activityThreadClass.getDeclaredField("mActivities");
+            activitiesField.setAccessible(true);
+
+            Map<Object, Object> activities = (Map<Object, Object>) activitiesField.get(activityThread);
+            if (activities == null)
+                return null;
+
+            for (Object activityRecord : activities.values()) {
+                Class activityRecordClass = activityRecord.getClass();
+                Field pausedField = activityRecordClass.getDeclaredField("paused");
+                pausedField.setAccessible(true);
+                if (!pausedField.getBoolean(activityRecord)) {
+                    Field activityField = activityRecordClass.getDeclaredField("activity");
+                    activityField.setAccessible(true);
+                    return (Activity) activityField.get(activityRecord);
+                }
+            }
+
+            return null;
+        }
+        catch (Exception e)
+        {
+            return null;
+        }
     }
 }

@@ -33,8 +33,9 @@ import static com.gtek.dragon_eye_rc.TimerState.thirtySecondState;
 public class TimerActivity extends AppCompatActivity {
     private Timer mTimer;
     private TimerTask mTimerTask = null;
-    private static int mCount = 0;
     private static int serNoA = -1, serNoB = -1;
+
+    private long mStartTime = 0;
 
     private TextView mTextViewDuration;
     private TextView mTextViewTimerStatus;
@@ -154,7 +155,7 @@ public class TimerActivity extends AppCompatActivity {
 
                     mTextViewTimerStatus.setText("Finished ...");
 
-                    if(mCount >= 20000) // Over 200 secs, do not play voice
+                    if(System.currentTimeMillis() - mStartTime >= 200000) // Over 200 secs, do not play voice
                         return;
 
                     Thread thread = new Thread(new Runnable() {
@@ -167,7 +168,8 @@ public class TimerActivity extends AppCompatActivity {
                             }
                             ArrayList<Integer> toneArray = new ArrayList<>();
                             toneArray.add(R.raw.r_e);
-                            int v = mCount / 100;
+                            long millis = System.currentTimeMillis() - mStartTime;
+                            int v = (int) (millis / 1000);
                             if (v <= 20) {
                                 toneArray.add(numberToResourId(v));
                             } else if(v < 100) {
@@ -184,13 +186,13 @@ public class TimerActivity extends AppCompatActivity {
                                 }
                             }
                             toneArray.add(R.raw.r_point);
-                            v = mCount % 100;
+                            v = (int) (millis % 1000) / 10;
                             toneArray.add(numberToResourId(v / 10));
                             toneArray.add(numberToResourId(v % 10));
                             DragonEyeApplication.getInstance().playTone(toneArray);
-                            if(mCount < 3000) // Less than 30 seconds
+                            if(millis < 30000) // Less than 30 seconds
                                 toneArray.add(R.raw.smb_world_clear);
-                            else if(mCount < 4000) // Less than 40 seconds
+                            else if(millis < 40000) // Less than 40 seconds
                                 toneArray.add(R.raw.smb_stage_clear);
                         }
                     });
@@ -320,9 +322,9 @@ public class TimerActivity extends AppCompatActivity {
             }
         });
 
-        registerReceiver(broadcastReceiver, new IntentFilter("mcastMsg"));
-        registerReceiver(broadcastReceiver, new IntentFilter("udpMsg"));
-        registerReceiver(broadcastReceiver, new IntentFilter("usbMsg"));
+        //registerReceiver(broadcastReceiver, new IntentFilter("mcastMsg"));
+        //registerReceiver(broadcastReceiver, new IntentFilter("udpMsg"));
+        //registerReceiver(broadcastReceiver, new IntentFilter("usbMsg"));
 
         FloatingActionButton bs = findViewById(R.id.button_start_timer);
         bs.setOnClickListener(new View.OnClickListener() {
@@ -347,7 +349,7 @@ public class TimerActivity extends AppCompatActivity {
         mThirtySecondTimer.cancel();
         stopTimer();
         DragonEyeApplication.getInstance().stopTone();
-        unregisterReceiver(broadcastReceiver);
+        //unregisterReceiver(broadcastReceiver);
         super.onDestroy();
     }
 
@@ -355,9 +357,7 @@ public class TimerActivity extends AppCompatActivity {
     {
         //This method is called directly by the timer
         //and runs in the same thread as the timer.
-        mCount++;
-
-        if(mCount >= 20000) { /* 200 seconds timeout */
+        if(System.currentTimeMillis() - mStartTime >= 200000) { /* 200 seconds timeout */
             Message message = new Message();
             message.obj = "timeout";
             message.what = 1;
@@ -370,15 +370,16 @@ public class TimerActivity extends AppCompatActivity {
 
     private Runnable Timer_Tick = new Runnable() {
         public void run() {
+            long millis = System.currentTimeMillis() - mStartTime;
             //This method runs in the same thread as the UI.
             //Do something to the UI thread here
-            float duration = (float)mCount / 100;
+            float duration = (float)millis / 1000;
             mTextViewDuration.setText(String.format("%.2f", duration));
         }
     };
 
     private void startTimer(){
-        mCount = 0;
+        mStartTime = System.currentTimeMillis();
         if (mTimer == null) {
             mTimer = new Timer();
         }
@@ -396,7 +397,7 @@ public class TimerActivity extends AppCompatActivity {
             mTimer.schedule(mTimerTask, 0, 10);
     }
 
-    private void stopTimer(){
+    private void stopTimer() {
         if (mTimer != null) {
             mTimer.cancel();
             mTimer = null;
@@ -465,7 +466,7 @@ public class TimerActivity extends AppCompatActivity {
             }
         }
     }
-
+/*
     private void onUdpRx(String str) {
         System.out.println("UDP RX : " + str);
         int index = str.indexOf(':');
@@ -478,7 +479,7 @@ public class TimerActivity extends AppCompatActivity {
             triggerHandler(s);
     }
 
-    private void onMulticastRx(String str) {
+    void onMulticastRx(String str) {
         System.out.println("Multicast RX : " + str);
         int index = str.indexOf(':');
         String addr = str.substring(0, index); // Address insert front by MulticastThread
@@ -489,12 +490,28 @@ public class TimerActivity extends AppCompatActivity {
         if (b != null)
             triggerHandler(s);
     }
+*/
+    void onMulticastRx(String addr, String s) {
+        System.out.println("Multicast RX : " + s);
+        if(TextUtils.isEmpty(addr) || TextUtils.isEmpty(s))
+            return;
+        DragonEyeBase b = DragonEyeApplication.getInstance().findBaseByAddress(addr);
+        if (b != null) {
+            TimerActivity.this.runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                    triggerHandler(s);
+                }
+            });
 
-    private void onUsbRx(String s) {
+        }
+    }
+
+    void onUsbRx(String s) {
         System.out.println("USB RX : " + s);
         triggerHandler(s);
     }
-
+/*
     private BroadcastReceiver broadcastReceiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
@@ -513,4 +530,5 @@ public class TimerActivity extends AppCompatActivity {
             }
         }
     };
+ */
 }
