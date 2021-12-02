@@ -138,7 +138,7 @@ public class TimerActivity extends AppCompatActivity {
                 //System.out.println("mCourseCount.get() = " + mCourseCount.get());
                 startTimer();
                 DragonEyeApplication.getInstance().playPriorityTone(R.raw.r_a);
-                mTextViewTimerStatus.setText("Course " + mCourseCount.get());
+                mTextViewTimerStatus.setText("Course " + Integer.toString(mCourseCount.get() + 1));
             }
         } else if(mTimerState == speedCourseState) {
             if(!mOutside) { // Outside
@@ -151,11 +151,11 @@ public class TimerActivity extends AppCompatActivity {
                     return;
 
                 mCourseCount.incrementAndGet();
-                System.out.println("mCourseCount.get() = " + mCourseCount.get());
+                //System.out.println("mCourseCount.get() = " + mCourseCount.get());
 
                 if (mCourseCount.get() < 10) {
                     DragonEyeApplication.getInstance().playPriorityTone(R.raw.r_a);
-                    mTextViewTimerStatus.setText("Course " + mCourseCount.get());
+                    mTextViewTimerStatus.setText("Course " + Integer.toString(mCourseCount.get() + 1));
                 } else {
                     long millis = System.currentTimeMillis() - mStartTime;
 
@@ -260,7 +260,7 @@ public class TimerActivity extends AppCompatActivity {
                     return;
                 mCourseCount.incrementAndGet();
                 //System.out.println("mCourseCount.get() = " + mCourseCount.get());
-                mTextViewTimerStatus.setText("Course " + mCourseCount.get());
+                mTextViewTimerStatus.setText("Course " + Integer.toString(mCourseCount.get() + 1));
                 if(mCourseCount.get() < 9)
                     DragonEyeApplication.getInstance().playPriorityTone(R.raw.r_b);
                 else
