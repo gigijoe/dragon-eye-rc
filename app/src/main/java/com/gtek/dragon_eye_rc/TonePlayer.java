@@ -77,13 +77,12 @@ public class TonePlayer implements Runnable {
         byte[] buffer = new byte[160];
         InputStream is;
         is = mContext.getResources().openRawResource(resourceId);
-
         try {
             audioTrack.play();
             while (is.read(buffer) != -1 && !interrupt.get()) {
                 play(buffer);
             }
-            System.out.println("Finish tone ...");
+            //System.out.println("Finish tone ...");
         } catch (Exception e) {
             e.printStackTrace();
         }

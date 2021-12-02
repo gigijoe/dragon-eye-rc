@@ -58,6 +58,16 @@
             android:src="@drawable/ic_baseline_explore_24" />
 -->
         <ImageView
+            android:id="@+id/iv_run"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:background="@drawable/selector"
+            android:clickable="true"
+            android:focusable="true"
+            android:padding="24dp"
+            android:src="@drawable/ic_baseline_play_circle_outline_48" />
+
+        <ImageView
             android:id="@+id/iv_system_settings"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"

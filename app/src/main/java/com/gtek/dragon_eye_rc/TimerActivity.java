@@ -15,8 +15,11 @@ import android.os.Looper;
 import android.os.Message;
 import android.text.TextUtils;
 import android.view.View;
+import android.widget.ArrayAdapter;
 import android.widget.Button;
+import android.widget.ListView;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 
@@ -50,6 +53,10 @@ public class TimerActivity extends AppCompatActivity {
 
     private RepeatTriggerTimer mRepeatTriggerTimer = new RepeatTriggerTimer(1000, 10);
     private AtomicInteger mRepeatTriggerTick = new AtomicInteger(0);
+
+    private ListView mListViewResults;
+    private ArrayList<String> mResults = new ArrayList<String>();
+    private ArrayAdapter<String> mListViewResultsAdapter;
 
     private final Handler mHandler = new Handler(Looper.getMainLooper()) {
         @Override
@@ -144,19 +151,28 @@ public class TimerActivity extends AppCompatActivity {
                     return;
 
                 mCourseCount.incrementAndGet();
-                //System.out.println("mCourseCount.get() = " + mCourseCount.get());
+                System.out.println("mCourseCount.get() = " + mCourseCount.get());
 
                 if (mCourseCount.get() < 10) {
                     DragonEyeApplication.getInstance().playPriorityTone(R.raw.r_a);
                     mTextViewTimerStatus.setText("Course " + mCourseCount.get());
                 } else {
+                    long millis = System.currentTimeMillis() - mStartTime;
+
                     stopTimer();
                     mTimerState = finishState;
-
                     mTextViewTimerStatus.setText("Finished ...");
 
-                    if(System.currentTimeMillis() - mStartTime >= 200000) // Over 200 secs, do not play voice
+                    if(millis >= 200000) // Over 200 secs, do not play voice
                         return;
+
+                    float duration = (float)millis / 1000;
+                    mTextViewDuration.setText(String.format("%.2f", duration));
+                    //System.out.println("Result = " + String.format("%.2f", duration));
+
+                    mResults.add(0, String.format("%.2f", duration));
+                    //mListViewResults.deferNotifyDataSetChanged();
+                    mListViewResultsAdapter.notifyDataSetChanged();
 
                     Thread thread = new Thread(new Runnable() {
                         @Override
@@ -168,7 +184,7 @@ public class TimerActivity extends AppCompatActivity {
                             }
                             ArrayList<Integer> toneArray = new ArrayList<>();
                             toneArray.add(R.raw.r_e);
-                            long millis = System.currentTimeMillis() - mStartTime;
+
                             int v = (int) (millis / 1000);
                             if (v <= 20) {
                                 toneArray.add(numberToResourId(v));
@@ -322,6 +338,10 @@ public class TimerActivity extends AppCompatActivity {
             }
         });
 
+        mListViewResults = (ListView)findViewById(R.id.resultList);
+        mListViewResultsAdapter = new ArrayAdapter<String>(this, R.layout.result_content, mResults);
+        mListViewResults.setAdapter(mListViewResultsAdapter);
+
         //registerReceiver(broadcastReceiver, new IntentFilter("mcastMsg"));
         //registerReceiver(broadcastReceiver, new IntentFilter("udpMsg"));
         //registerReceiver(broadcastReceiver, new IntentFilter("usbMsg"));
@@ -363,20 +383,16 @@ public class TimerActivity extends AppCompatActivity {
             message.what = 1;
             mHandler.sendMessage(message);
         }
-        //We call the method that will work with the UI
-        //through the runOnUiThread method.
-        this.runOnUiThread(Timer_Tick);
-    }
 
-    private Runnable Timer_Tick = new Runnable() {
-        public void run() {
-            long millis = System.currentTimeMillis() - mStartTime;
-            //This method runs in the same thread as the UI.
-            //Do something to the UI thread here
-            float duration = (float)millis / 1000;
-            mTextViewDuration.setText(String.format("%.2f", duration));
-        }
-    };
+        long millis = System.currentTimeMillis() - mStartTime;
+        float duration = (float)millis / 1000;
+        runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                mTextViewDuration.setText(String.format("%.2f", duration));
+            }
+        });
+    }
 
     private void startTimer(){
         mStartTime = System.currentTimeMillis();

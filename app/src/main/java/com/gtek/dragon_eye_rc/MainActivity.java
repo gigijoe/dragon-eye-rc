@@ -81,8 +81,6 @@ public class MainActivity extends AppCompatActivity {
 
     private static int serNoA = -1, serNoB = -1;
     
-    public boolean isWifiConnected = false;
-
     public ListView mListView;
     public ListViewAdapter mListViewAdapter;
 
@@ -137,6 +135,7 @@ public class MainActivity extends AppCompatActivity {
             TextView txtAddress;
             TextView txtStatus;
             //ImageView imgCompassCalibration;
+            ImageView imgRun;
             ImageView imgSystemSettings;
             ImageView imgCameraSettings;
             ImageView imgRtspVideo;
@@ -176,7 +175,29 @@ public class MainActivity extends AppCompatActivity {
                     }
                     break;
  */
-                case R.id.iv_system_settings: System.out.println("iv_system_settings OnClick...");
+                case R.id.iv_run:
+                    if(b.getStatus() == DragonEyeBase.Status.STOPPED) {
+                        Thread thread = new Thread(new Runnable() {
+                            @Override
+                            public void run() {
+                                DragonEyeApplication.getInstance().requestStart(b);
+                                b.trying();
+                            }
+                        });
+                        thread.start();
+
+                    } else if(b.getStatus() == DragonEyeBase.Status.STARTED) {
+                        Thread thread = new Thread(new Runnable() {
+                            @Override
+                            public void run() {
+                                DragonEyeApplication.getInstance().requestStop(b);
+                                b.trying();
+                            }
+                        });
+                        thread.start();
+                    }
+                    break;
+                case R.id.iv_system_settings: //System.out.println("iv_system_settings OnClick...");
                     if(b.getStatus() == DragonEyeBase.Status.OFFLINE || b.getStatus() == DragonEyeBase.Status.STARTED)
                         break;
                     if(b.getSystemSettings() == null)
@@ -184,7 +205,7 @@ public class MainActivity extends AppCompatActivity {
                     Intent intent = new Intent(getApplicationContext(), SystemSettingsActivity.class);
                     startActivity(intent);
                     break;
-                case R.id.iv_camera_settings: System.out.println("iv_camera_settings OnClick...");
+                case R.id.iv_camera_settings: //System.out.println("iv_camera_settings OnClick...");
                     if(b.getStatus() == DragonEyeBase.Status.OFFLINE || b.getStatus() == DragonEyeBase.Status.STARTED)
                         break;
                     if(b.getCameraSettings() == null)
@@ -192,7 +213,7 @@ public class MainActivity extends AppCompatActivity {
                     intent = new Intent(getApplicationContext(), CameraSettingsActivity.class);
                     startActivity(intent);
                     break;
-                case R.id.iv_rtsp_video: System.out.println("iv_rtsp_video OnClick...");
+                case R.id.iv_rtsp_video: //System.out.println("iv_rtsp_video OnClick...");
                     if(b.getStatus() != DragonEyeBase.Status.STARTED)
                         break;
                     intent = new Intent(getApplicationContext(), VideoActivity.class);
@@ -222,6 +243,7 @@ public class MainActivity extends AppCompatActivity {
                 viewHolder.txtAddress = (TextView) convertView.findViewById(R.id.tv_ip);
                 viewHolder.txtStatus = (TextView) convertView.findViewById(R.id.tv_status);
                 //viewHolder.imgCompassCalibration = (ImageView) convertView.findViewById(R.id.iv_explore);
+                viewHolder.imgRun = (ImageView) convertView.findViewById(R.id.iv_run);
                 viewHolder.imgSystemSettings = (ImageView) convertView.findViewById(R.id.iv_system_settings);
                 viewHolder.imgCameraSettings = (ImageView) convertView.findViewById(R.id.iv_camera_settings);
                 viewHolder.imgRtspVideo = (ImageView) convertView.findViewById(R.id.iv_rtsp_video);
@@ -276,6 +298,19 @@ public class MainActivity extends AppCompatActivity {
                     break;
             }
 */
+            viewHolder.imgRun.setOnClickListener(this);
+            viewHolder.imgRun.setTag(position);
+            switch(b.getStatus()) {
+                case STARTED: //viewHolder.imgRun.setColorFilter(Color.parseColor("#D3D3D3"));
+                    viewHolder.imgRun.setColorFilter(Color.parseColor("#000000"));
+                    //viewHolder.imgRun.setImageDrawable(getResources().getDrawable(R.drawable.ic_baseline_pause_circle_outline_48));
+                    viewHolder.imgRun.setImageResource(R.drawable.ic_baseline_pause_circle_outline_48);
+                    break;
+                default: viewHolder.imgRun.setColorFilter(Color.parseColor("#000000"));
+                    //viewHolder.imgRun.setImageDrawable(getResources().getDrawable(R.drawable.ic_baseline_play_circle_outline_48));
+                    viewHolder.imgRun.setImageResource(R.drawable.ic_baseline_play_circle_outline_48);
+            }
+
             viewHolder.imgSystemSettings.setOnClickListener(this);
             viewHolder.imgSystemSettings.setTag(position);
             switch(b.getStatus()) {
@@ -545,7 +580,8 @@ public class MainActivity extends AppCompatActivity {
                             DragonEyeApplication.getInstance().requestFirmwareVersion(b);
                         } else { /* Base exist ... */
                             b.multicastReceived();
-                            if(b.getStatus() == DragonEyeBase.Status.OFFLINE) {
+                            if(b.getStatus() == DragonEyeBase.Status.OFFLINE ||
+                                    b.getStatus() == DragonEyeBase.Status.ONLINE) {
                                 b.online();
                                 DragonEyeApplication.getInstance().requestSystemSettings(b);
                                 DragonEyeApplication.getInstance().requestCameraSettings(b);

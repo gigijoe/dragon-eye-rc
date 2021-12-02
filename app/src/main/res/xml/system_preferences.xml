@@ -61,6 +61,10 @@
             android:key="horizon_ratio"
             android:title="Horizon ratio of screen"
             app:useSimpleSummaryProvider="true" />
+        <SwitchPreference
+            android:defaultValue="false"
+            android:key="buzzer"
+            android:title="Buzzer" />
         <Preference
             android:key="misc_settings"
             android:title="Misc Settings" >

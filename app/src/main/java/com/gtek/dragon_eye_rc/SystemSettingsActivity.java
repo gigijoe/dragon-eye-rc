@@ -133,6 +133,11 @@ public class SystemSettingsActivity extends AppCompatActivity {
                             } else if (TextUtils.equals(keyValue[1], "30")) {
                                 editor.putString("horizon_ratio", "30");
                             }
+                        } else if (TextUtils.equals(keyValue[0], "base.buzzer")) {
+                            if (TextUtils.equals(keyValue[1], "yes"))
+                                editor.putBoolean("buzzer", true);
+                            else
+                                editor.putBoolean("buzzer", false);
                         }
                     }
                 }
@@ -235,6 +240,13 @@ public class SystemSettingsActivity extends AppCompatActivity {
                     case "30": udpPayload.append("base.horizon.ratio=30");
                         break;
                 }
+                udpPayload.append("\n");
+
+                b = sp.getBoolean("buzzer", false);
+                if(b)
+                    udpPayload.append("base.buzzer=yes");
+                else
+                    udpPayload.append("base.buzzer=no");
                 udpPayload.append("\n");
 
                 //System.out.println(udpPayload.toString());
