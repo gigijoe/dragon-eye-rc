@@ -30,7 +30,7 @@ public class DragonEyeApplication extends Application {
     private final AtomicBoolean isPriorityPlaying = new AtomicBoolean(false);
     ArrayList<Integer> mToneArray = null;
 
-    public void playTone(int resourceId) {
+    synchronized public void playTone(int resourceId) {
         PowerManager pm = (PowerManager) getSystemService(Context.POWER_SERVICE);
         if(!pm.isInteractive())
             return;
@@ -49,7 +49,7 @@ public class DragonEyeApplication extends Application {
         t.start();
     }
 
-    public void playPriorityTone(int resourceId) {
+    synchronized public void playPriorityTone(int resourceId) {
         if(mTonePlayer.isPlaying()) {
             mTonePlayer.stopPlay();
            if(mToneArray != null)
@@ -63,7 +63,7 @@ public class DragonEyeApplication extends Application {
         t.start();
     }
 
-    public void playTone(ArrayList<Integer> a) {
+    synchronized public void playTone(ArrayList<Integer> a) {
         PowerManager pm = (PowerManager) getSystemService(Context.POWER_SERVICE);
         if(!pm.isInteractive())
             return;
@@ -114,12 +114,11 @@ public class DragonEyeApplication extends Application {
         return null;
     }
 
-    public void triggerBaseA() {
+    public void triggerBase(DragonEyeBase.Type t) {
         for(DragonEyeBase b : mBaseList) {
-            if(b.getType() == DragonEyeBase.Type.BASE_A) {
+            if(b.getType() == t) {
                 if (!b.isBaseTrigger())
                     b.baseTrigger();
-
             }
         }
     }
@@ -256,9 +255,10 @@ public class DragonEyeApplication extends Application {
         super.onTerminate();
     }
 
+    @SuppressWarnings("unchecked")
     public Activity getActivity() {
         try {
-            Class activityThreadClass = Class.forName("android.app.ActivityThread");
+            Class<?> activityThreadClass = Class.forName("android.app.ActivityThread");
             Object activityThread = activityThreadClass.getMethod("currentActivityThread").invoke(null);
             Field activitiesField = activityThreadClass.getDeclaredField("mActivities");
             activitiesField.setAccessible(true);

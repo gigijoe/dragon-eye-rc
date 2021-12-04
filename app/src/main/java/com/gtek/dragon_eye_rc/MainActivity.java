@@ -1,5 +1,7 @@
 package com.gtek.dragon_eye_rc;
 
+import static com.gtek.dragon_eye_rc.DragonEyeBase.Status.STARTED;
+
 import android.Manifest;
 import android.annotation.SuppressLint;
 import android.app.Activity;
@@ -24,8 +26,6 @@ import android.net.wifi.WifiInfo;
 import android.net.wifi.WifiManager;
 import android.os.Build;
 import android.os.Bundle;
-import android.os.PowerManager;
-import android.provider.SyncStateContract;
 import android.text.TextUtils;
 import android.text.method.LinkMovementMethod;
 import android.text.util.Linkify;
@@ -72,15 +72,14 @@ import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 public class MainActivity extends AppCompatActivity {
-
-    private static final int UDP_REMOTE_PORT = 4999;
-
     private static final int MY_PERMISSIONS_REQUEST_CODE = 123;
     private Context mContext;
     private Activity mActivity;
 
-    private static int serNoA = -1, serNoB = -1;
-    
+    private static int serNoA = 0, serNoB = 0;
+    private static int triggerLossA = 0;
+    private static int triggerLossB = 0;
+
     public ListView mListView;
     public ListViewAdapter mListViewAdapter;
 
@@ -186,7 +185,7 @@ public class MainActivity extends AppCompatActivity {
                         });
                         thread.start();
 
-                    } else if(b.getStatus() == DragonEyeBase.Status.STARTED) {
+                    } else if(b.getStatus() == STARTED) {
                         Thread thread = new Thread(new Runnable() {
                             @Override
                             public void run() {
@@ -198,7 +197,7 @@ public class MainActivity extends AppCompatActivity {
                     }
                     break;
                 case R.id.iv_system_settings: //System.out.println("iv_system_settings OnClick...");
-                    if(b.getStatus() == DragonEyeBase.Status.OFFLINE || b.getStatus() == DragonEyeBase.Status.STARTED)
+                    if(b.getStatus() == DragonEyeBase.Status.OFFLINE || b.getStatus() == STARTED)
                         break;
                     if(b.getSystemSettings() == null)
                         break;
@@ -206,7 +205,7 @@ public class MainActivity extends AppCompatActivity {
                     startActivity(intent);
                     break;
                 case R.id.iv_camera_settings: //System.out.println("iv_camera_settings OnClick...");
-                    if(b.getStatus() == DragonEyeBase.Status.OFFLINE || b.getStatus() == DragonEyeBase.Status.STARTED)
+                    if(b.getStatus() == DragonEyeBase.Status.OFFLINE || b.getStatus() == STARTED)
                         break;
                     if(b.getCameraSettings() == null)
                         break;
@@ -214,7 +213,7 @@ public class MainActivity extends AppCompatActivity {
                     startActivity(intent);
                     break;
                 case R.id.iv_rtsp_video: //System.out.println("iv_rtsp_video OnClick...");
-                    if(b.getStatus() != DragonEyeBase.Status.STARTED)
+                    if(b.getStatus() != STARTED)
                         break;
                     intent = new Intent(getApplicationContext(), VideoActivity.class);
                     //intent.putExtra(VideoActivity.RTSP_URL, "RTSP://172.16.0.1:8554/test");
@@ -272,15 +271,15 @@ public class MainActivity extends AppCompatActivity {
             switch(b.getStatus()) {
                 case OFFLINE: viewHolder.txtStatus.setTextColor(Color.parseColor("#D3D3D3")); // grey
                     break;
-                case ONLINE: viewHolder.txtStatus.setTextColor(Color.parseColor("#000000"));
+                case ONLINE: viewHolder.txtStatus.setTextColor(Color.parseColor("#000000")); // black
                     break;
-                case STOPPED: viewHolder.txtStatus.setTextColor(Color.parseColor("#FF0000"));
+                case STOPPED: viewHolder.txtStatus.setTextColor(Color.parseColor("#FF0000")); // red
                     break;
-                case STARTED: viewHolder.txtStatus.setTextColor(Color.parseColor("#00FF00"));
+                case STARTED: viewHolder.txtStatus.setTextColor(Color.parseColor("#00FF00")); // green
                     break;
-                case TRYING: viewHolder.txtStatus.setTextColor(Color.parseColor("#0000FF"));
+                case TRYING: viewHolder.txtStatus.setTextColor(Color.parseColor("#0000FF")); // blue
                     break;
-                case ERROR: viewHolder.txtStatus.setTextColor(Color.parseColor("#FF0000"));
+                case ERROR: viewHolder.txtStatus.setTextColor(Color.parseColor("#FF0000")); // red
                     break;
             }
 /*
@@ -302,11 +301,11 @@ public class MainActivity extends AppCompatActivity {
             viewHolder.imgRun.setTag(position);
             switch(b.getStatus()) {
                 case STARTED: //viewHolder.imgRun.setColorFilter(Color.parseColor("#D3D3D3"));
-                    viewHolder.imgRun.setColorFilter(Color.parseColor("#000000"));
+                    viewHolder.imgRun.setColorFilter(Color.parseColor("#FF0000"));
                     //viewHolder.imgRun.setImageDrawable(getResources().getDrawable(R.drawable.ic_baseline_pause_circle_outline_48));
                     viewHolder.imgRun.setImageResource(R.drawable.ic_baseline_pause_circle_outline_48);
                     break;
-                default: viewHolder.imgRun.setColorFilter(Color.parseColor("#000000"));
+                default: viewHolder.imgRun.setColorFilter(Color.parseColor("#00FF00"));
                     //viewHolder.imgRun.setImageDrawable(getResources().getDrawable(R.drawable.ic_baseline_play_circle_outline_48));
                     viewHolder.imgRun.setImageResource(R.drawable.ic_baseline_play_circle_outline_48);
             }
@@ -337,8 +336,16 @@ public class MainActivity extends AppCompatActivity {
                 default: viewHolder.imgRtspVideo.setColorFilter(Color.parseColor("#D3D3D3"));
             }
 
+            int serNo = 0;
+
+            if(b.getType() == DragonEyeBase.Type.BASE_A)
+                serNo = serNoA;
+            else if(b.getType() == DragonEyeBase.Type.BASE_B)
+                serNo = serNoB;
+
             //String s = "Yaw " + b.yaw() + "\u00b0 / " + "Temp " + (float)b.temperature() / 1000.0 + "\u2103" + " / GPU " + b.gpuLoad() / 10 + "% / FPS " + b.fps();
-            String s = "FPS " + b.fps() + " / " + "Temp " + (float)b.temperature() / 1000.0 + "\u2103" + " / GPU " + b.gpuLoad() / 10 + "%";
+            String s = "FPS " + b.fps() + " | " + "Temp " + (float)b.temperature() / 1000.0 + "\u2103" +
+                    " | GPU " + b.gpuLoad() / 10 + "% | " + b.triggerLoss() + "/" + serNo;
             viewHolder.txtTelemetry.setText(s);
 
             // Return the completed view to render on screen
@@ -431,7 +438,10 @@ public class MainActivity extends AppCompatActivity {
             lock.setReferenceCounted(true);
             lock.acquire();
 
+            byte[] buf = new byte[1024];
             DatagramPacket packet;
+            packet = new DatagramPacket(buf, buf.length);
+
             while (running.get()) {
                 if (wifiMgr.isWifiEnabled() == false) {
                     try {
@@ -458,6 +468,7 @@ public class MainActivity extends AppCompatActivity {
                     } catch (InterruptedException e) {
                         e.printStackTrace();
                     }
+                    //System.out.println("multicastThread - Supplicant NOT Complete !!!");
                     continue;
                 }
 
@@ -501,24 +512,21 @@ public class MainActivity extends AppCompatActivity {
                     }
                 }
 
-                if(socket == null)
+                if(socket == null) {
+                    try {
+                        Thread.sleep(100);
+                    } catch (InterruptedException e) {
+                        e.printStackTrace();
+                    }
                     continue;
-
-                byte[] buf = new byte[256];
-                packet = new DatagramPacket(buf, buf.length);
+                }
 
                 try {
-                    socket.setSoTimeout(100);
+                    //socket.setSoTimeout(100);
                     socket.receive(packet);
                 } catch (SocketTimeoutException e) {
                     //e.printStackTrace();
-                    //System.out.println("multicastThread - RX timeout");
-/*
-                    Intent intent = new Intent();
-                    intent.setAction("mcastMsg");
-                    intent.putExtra("mcastPollTimeout", 0);
-                    mContext.sendBroadcast(intent);
-*/
+                    System.out.println("multicastThread - RX timeout");
                     continue;
                 } catch (SocketException e) {
                     e.printStackTrace();
@@ -533,64 +541,20 @@ public class MainActivity extends AppCompatActivity {
 
                 String s = new String(packet.getData(), packet.getOffset(), packet.getLength());
                 System.out.println("Multicast receive : " + s);
-/*
-                Intent intent = new Intent();
-                intent.setFlags(Intent.FLAG_RECEIVER_FOREGROUND);
-                intent.setAction("mcastMsg");
-                intent.putExtra("mcastRcvMsg", packet.getAddress().getHostAddress() + ":" + s);
-                mContext.sendBroadcast(intent);
-*/
+
                 Activity a = DragonEyeApplication.getInstance().getActivity();
-                if(a != null) {
-                    if (TextUtils.equals(a.getClass().getSimpleName(), "MainActivity")) {
-                        MainActivity.this.onMulticastRx(packet.getAddress().getHostAddress(), s);
-                    } else if (TextUtils.equals(a.getClass().getSimpleName(), "TimerActivity")) {
-                        ((TimerActivity) a).onMulticastRx(packet.getAddress().getHostAddress(), s);
-                    }
-                }
-
-                String baseHost[] = s.split(":");
-                if (baseHost.length >= 2) {
-                    DragonEyeBase b = DragonEyeApplication.getInstance().findBaseByAddress(baseHost[1]);
-                    //System.out.println(baseHost[0]);
-                    //System.out.println(baseHost[1]);
-                    if (TextUtils.equals(baseHost[0], "BASE_A") ||
-                            TextUtils.equals(baseHost[0], "BASE_B")) {
-                        try {
-                            InetAddress.getByName(baseHost[1]); // Test if valid ip address
-                        } catch (UnknownHostException e) {
-                            Log.i("multicastThread", "Unknown host : " + baseHost[1]);
-                            e.printStackTrace();
-                            continue;
-                        }
-
-                        if(TextUtils.equals(baseHost[1], "127.0.0.1"))
-                            continue;
-
-                        if(b == null) { /* New base */
-                            b = new DragonEyeBase(mContext, baseHost[0], baseHost[1]); /* Type, Address */
-                            b.multicastReceived();
-                            b.online();
-                            DragonEyeApplication.getInstance().addBase(b);
-                            mListView.deferNotifyDataSetChanged();
-
-                            DragonEyeApplication.getInstance().requestSystemSettings(b);
-                            DragonEyeApplication.getInstance().requestCameraSettings(b);
-                            DragonEyeApplication.getInstance().requestStatus(b);
-                            DragonEyeApplication.getInstance().requestFirmwareVersion(b);
-                        } else { /* Base exist ... */
-                            b.multicastReceived();
-                            if(b.getStatus() == DragonEyeBase.Status.OFFLINE ||
-                                    b.getStatus() == DragonEyeBase.Status.ONLINE) {
-                                b.online();
-                                DragonEyeApplication.getInstance().requestSystemSettings(b);
-                                DragonEyeApplication.getInstance().requestCameraSettings(b);
-                                DragonEyeApplication.getInstance().requestFirmwareVersion(b);
-                                DragonEyeApplication.getInstance().requestStatus(b);
-                            }
-                            // Alway request while receive multicast from base ...
+                if (s.charAt(0) == '<' && s.charAt(s.length() - 1) == '>') {
+                    DragonEyeBase b = DragonEyeApplication.getInstance().findBaseByAddress(packet.getAddress().getHostAddress());
+                    if (a != null && b != null) {
+                        if (TextUtils.equals(a.getClass().getSimpleName(), "MainActivity")) {
+                            //MainActivity.this.onBaseTrigger(b, s);
+                            ((MainActivity) a).onBaseTrigger(b, s);
+                        } else if (TextUtils.equals(a.getClass().getSimpleName(), "TimerActivity")) {
+                            ((TimerActivity) a).onBaseTrigger(b, s);
                         }
                     }
+                } else {
+                    MainActivity.this.onMulticastRx(packet.getAddress().getHostAddress(), s);
                 }
             }
 
@@ -615,6 +579,30 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+    private void updateWifiStatus() {
+    }
+/*
+    BroadcastReceiver networkReceiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            if (checkWifiConnect()) {
+                //Log.d(TAG, "wifi has connected");
+                // TODO
+            }
+        }
+
+        private boolean checkWifiConnect() {
+            ConnectivityManager manager = (ConnectivityManager) mContext.getSystemService(Context.CONNECTIVITY_SERVICE);
+            NetworkInfo networkInfo = manager.getActiveNetworkInfo();
+            if (networkInfo != null
+                    && networkInfo.getType() == ConnectivityManager.TYPE_WIFI
+                    && networkInfo.isConnected()) {
+                return true;
+            }
+            return false;
+        }
+    };
+*/
     @RequiresApi(api = Build.VERSION_CODES.LOLLIPOP)
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -693,12 +681,17 @@ public class MainActivity extends AppCompatActivity {
                 thread.start();
             }
         });
-
-        //registerReceiver(broadcastReceiver, new IntentFilter("mcastMsg"));
+/*
+        IntentFilter filter = new IntentFilter();
+        filter.addAction(WifiManager.NETWORK_STATE_CHANGED_ACTION);
+        filter.addAction(WifiManager.WIFI_STATE_CHANGED_ACTION);
+        filter.addAction(ConnectivityManager.CONNECTIVITY_ACTION);
+        registerReceiver(networkReceiver, filter);
+        //registerReceiver(networkReceiver, new IntentFilter(ConnectivityManager.CONNECTIVITY_ACTION));
+*/
         registerReceiver(broadcastReceiver, new IntentFilter("udpMsg"));
         registerReceiver(broadcastReceiver, new IntentFilter("baseMsg"));
         registerReceiver(broadcastReceiver, new IntentFilter("wifiMsg"));
-        //registerReceiver(broadcastReceiver, new IntentFilter("usbMsg"));
 
         registerReceiver(usbBroadcastReceiver, new IntentFilter(UsbManager.ACTION_USB_DEVICE_ATTACHED));
         registerReceiver(usbBroadcastReceiver, new IntentFilter(UsbManager.ACTION_USB_DEVICE_DETACHED));
@@ -878,18 +871,19 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    private void onBaseTrigger(DragonEyeBase b, String s) {
+    synchronized void onBaseTrigger(DragonEyeBase b, String s) {
         char base = s.charAt(1);
         int serNo = Integer.parseInt(s.substring(2, s.length() - 1));
         if((base == 'A' && serNo != serNoA)) {
-            if(!mUsbSerialThread.isRunning()) {
-                if (!isPaused.get()) {
-                    System.out.println("Play tone ...");
-                    DragonEyeApplication.getInstance().playTone(R.raw.smb_jump_small); // R.raw.r_a
-                }
+            if (!isPaused.get()) {
+                System.out.println("Play tone ...");
+                DragonEyeApplication.getInstance().playTone(R.raw.smb_jump_small); // R.raw.r_a
+            }
+            if(b == null) {
+                DragonEyeApplication.getInstance().triggerBase(DragonEyeBase.Type.BASE_A);
+            } else {
                 if (!b.isBaseTrigger()) {
                     b.baseTrigger(); // Color RED of base latter A or B only
-                    //mListViewAdapter.notifyDataSetChanged();
                     MainActivity.this.runOnUiThread(new Runnable() {
                         @Override
                         public void run() {
@@ -897,17 +891,23 @@ public class MainActivity extends AppCompatActivity {
                         }
                     });
                 }
-                serNoA = serNo;
             }
+            if(serNoA != 0 && serNo - serNoA > 1) {
+                System.out.println("Packet loss : " + serNoA + " - " + serNo);
+                triggerLossA++;
+                b.setTriggerLoss(triggerLossA);
+            }
+            serNoA = serNo;
         } else if((base == 'B' && serNo != serNoB)) {
-            if(!mUsbSerialThread.isRunning()) {
-                if (!isPaused.get()) {
-                    System.out.println("Play tone ...");
-                    DragonEyeApplication.getInstance().playTone(R.raw.smb_jump_super); // R.raw.r_b
-                }
+            if (!isPaused.get()) {
+                System.out.println("Play tone ...");
+                DragonEyeApplication.getInstance().playTone(R.raw.smb_jump_super); // R.raw.r_b
+            }
+            if(b == null) {
+                DragonEyeApplication.getInstance().triggerBase(DragonEyeBase.Type.BASE_B);
+            } else {
                 if (!b.isBaseTrigger()) {
                     b.baseTrigger(); // Color RED of base latter A or B only
-                    //mListViewAdapter.notifyDataSetChanged();
                     MainActivity.this.runOnUiThread(new Runnable() {
                         @Override
                         public void run() {
@@ -915,8 +915,13 @@ public class MainActivity extends AppCompatActivity {
                         }
                     });
                 }
-                serNoB = serNo;
             }
+            if(serNoB != 0 && serNo - serNoB > 1) {
+                System.out.println("Packet loss : " + serNoB + " - " + serNo);
+                triggerLossB++;
+                b.setTriggerLoss(triggerLossB);
+            }
+            serNoB = serNo;
         }
     }
 
@@ -931,7 +936,7 @@ public class MainActivity extends AppCompatActivity {
         if(b != null) {
             if(TextUtils.equals(s, "#Started")) {
                 b.stopResponseTimer();
-                if(b.getStatus() != DragonEyeBase.Status.STARTED) {
+                if(b.getStatus() != STARTED) {
                     b.started();
                     mListViewAdapter.notifyDataSetChanged();
                 }
@@ -990,69 +995,68 @@ public class MainActivity extends AppCompatActivity {
                 } else if(TextUtils.equals(s, "#Ack")) {
                     b.stopResponseTimer();
                 } else if (s.startsWith("#Error")) {
-                    if(b.getStatus() != DragonEyeBase.Status.ERROR) {
+                    if (b.getStatus() != DragonEyeBase.Status.ERROR) {
                         b.started();
                         mListViewAdapter.notifyDataSetChanged();
                     }
                 }
-/*
-                else if(s.charAt(0) == '<' && s.charAt(s.length()-1) == '>') {
-                    onBaseTrigger(b, s);
-                }
- */
             }
         }
     }
-/*
-    private void onMulticastRx(String str) {
-        System.out.println("Multicast RX : " + str);
-        int index = str.indexOf(':');
-        String addr = str.substring(0, index); // Address insert front by MulticastThread
-        String s = str.substring(index + 1);
-        if(TextUtils.isEmpty(addr) || TextUtils.isEmpty(s))
-            return;
-        if (s.charAt(0) == '<' && s.charAt(s.length() - 1) == '>') {
-            DragonEyeBase b = DragonEyeApplication.getInstance().findBaseByAddress(addr);
-            if (b != null)
-                onBaseTrigger(b, s);
-        } else if(s.startsWith("BASE_A:") || s.startsWith("BASE_B:")) {
-            String baseHost[] = s.split(":");
-            if(baseHost.length >= 5) {
-                //System.out.println(baseHost[0]);
-                DragonEyeBase b = DragonEyeApplication.getInstance().findBaseByAddress(baseHost[1]);
-                if(b != null) {
-                    b.setFps(Integer.parseInt(baseHost[2]));
-                    b.setTemperature(Integer.parseInt(baseHost[3]));
-                    b.setGpuLoad(Integer.parseInt(baseHost[4]));
-                    b.stopResponseTimer();
-                    mListViewAdapter.notifyDataSetChanged();
-                }
-            }
-        }
-    }
-*/
+
     void onMulticastRx(String addr, String s) {
-        if (s.charAt(0) == '<' && s.charAt(s.length() - 1) == '>') {
-            DragonEyeBase b = DragonEyeApplication.getInstance().findBaseByAddress(addr);
-            if (b != null)
-                onBaseTrigger(b, s);
-        } else if (s.startsWith("BASE_A:") || s.startsWith("BASE_B:")) {
+        if (s.startsWith("BASE_A:") || s.startsWith("BASE_B:")) {
             String baseHost[] = s.split(":");
             if (baseHost.length >= 5) {
                 //System.out.println(baseHost[0]);
+                try {
+                    InetAddress.getByName(baseHost[1]); // Test if valid ip address
+                } catch (UnknownHostException e) {
+                    Log.i("multicastThread", "Unknown host : " + baseHost[1]);
+                    e.printStackTrace();
+                    return;
+                }
+
+                if(TextUtils.equals(baseHost[1], "127.0.0.1"))
+                    return;
+
                 DragonEyeBase b = DragonEyeApplication.getInstance().findBaseByAddress(baseHost[1]);
                 if (b != null) {
+                }
+
+                if(b == null) { /* New base */
+                    b = new DragonEyeBase(mContext, baseHost[0], baseHost[1]); /* Type, Address */
+                    b.multicastReceived();
+                    b.online();
+                    DragonEyeApplication.getInstance().addBase(b);
+                    mListView.deferNotifyDataSetChanged();
+
+                    DragonEyeApplication.getInstance().requestSystemSettings(b);
+                    DragonEyeApplication.getInstance().requestCameraSettings(b);
+                    DragonEyeApplication.getInstance().requestStatus(b);
+                    DragonEyeApplication.getInstance().requestFirmwareVersion(b);
+                } else { /* Base exist ... */
+                    b.multicastReceived();
                     b.setFps(Integer.parseInt(baseHost[2]));
                     b.setTemperature(Integer.parseInt(baseHost[3]));
                     b.setGpuLoad(Integer.parseInt(baseHost[4]));
                     b.stopResponseTimer();
-                    //mListViewAdapter.notifyDataSetChanged();
                     MainActivity.this.runOnUiThread(new Runnable() {
                         @Override
                         public void run() {
                             mListViewAdapter.notifyDataSetChanged();
                         }
                     });
+
+                    if(b.getStatus() == DragonEyeBase.Status.OFFLINE ||
+                            b.getStatus() == DragonEyeBase.Status.ONLINE) {
+                        b.online();
+                        DragonEyeApplication.getInstance().requestSystemSettings(b);
+                        DragonEyeApplication.getInstance().requestCameraSettings(b);
+                        DragonEyeApplication.getInstance().requestFirmwareVersion(b);
+                        DragonEyeApplication.getInstance().requestStatus(b);
+                    }
+                    // Alway request while receive multicast from base ...
                 }
             }
         }
@@ -1065,15 +1069,6 @@ public class MainActivity extends AppCompatActivity {
                 if (intent.hasExtra("udpRcvMsg")) {
                     onUdpRx(intent.getStringExtra("udpRcvMsg"));
                 }
-/*
-            } else if(intent.getAction().equals("mcastMsg")) {
-                if (intent.hasExtra("mcastRcvMsg")) {
-                    onMulticastRx(intent.getStringExtra("mcastRcvMsg"));
-                }
-
-            } else if(intent.getAction().equals("usbMsg")) {
-                // Nothing to do here
- */
             } else if(intent.getAction().equals("baseMsg")) {
                 if (intent.hasExtra("baseResponseTimeout")) { // base has no response of UDP request
                     mListViewAdapter.notifyDataSetChanged();
@@ -1151,57 +1146,28 @@ public class MainActivity extends AppCompatActivity {
 
                     char base = cmd.charAt(h + 1);
                     int serNo = Integer.parseInt(cmd.substring(h + 2, cmd.length()));
-                    String msg = new String(cmd.substring(h) + ">");
 
                     Activity a = DragonEyeApplication.getInstance().getActivity();
 
-                    if (base == 'A' && serNo != serNoA) {
+                    if (s.charAt(0) == '<' && s.charAt(s.length() - 1) == '>') {
                         if(TextUtils.equals(a.getClass().getSimpleName(), "MainActivity")) {
-                            System.out.println("Play tone ...");
-                            DragonEyeApplication.getInstance().playTone(R.raw.smb_jump_small); // R.raw.r_a
+                            ((MainActivity) a).onBaseTrigger(null, s);
                         } else if(TextUtils.equals(a.getClass().getSimpleName(), "TimerActivity")) {
-                            ((TimerActivity)a).onUsbRx(s);
+                            ((TimerActivity)a).onBaseTrigger(null, s);
                         }
-
-                        serNoA = serNo;
-/*
-                        Intent intent = new Intent();
-                        intent.setFlags(Intent.FLAG_RECEIVER_FOREGROUND);
-                        intent.setAction("usbMsg");
-                        intent.putExtra("usbRcvMsg", msg);
-                        mContext.sendBroadcast(intent);
-                        */
-                        runOnUiThread(new Runnable() {
-                            @Override
-                            public void run() {
-                                Toast.makeText(mActivity, "UsbSerial RX : " + msg, Toast.LENGTH_SHORT).show();
-                            }
-                        });
-
-                        continue;
                     }
 
-                    if (base == 'B' && serNo != serNoB) {
-                        if(TextUtils.equals(a.getClass().getSimpleName(), "MainActivity")) {
-                            System.out.println("Play tone ...");
-                            DragonEyeApplication.getInstance().playTone(R.raw.smb_jump_super); // R.raw.r_b
-                        } else if(TextUtils.equals(a.getClass().getSimpleName(), "TimerActivity")) {
-                            ((TimerActivity)a).onUsbRx(s);
-                        }
-                        serNoB = serNo;
-/*
-                        Intent intent = new Intent();
-                        intent.setFlags(Intent.FLAG_RECEIVER_FOREGROUND);
-                        intent.setAction("usbMsg");
-                        intent.putExtra("usbRcvMsg", msg);
-                        mContext.sendBroadcast(intent);
-*/
+                    String msg = new String(cmd.substring(h) + ">");
+
+                    if ((base == 'A' && serNo != serNoA) || (base == 'B' && serNo != serNoB)) {
                         runOnUiThread(new Runnable() {
                             @Override
                             public void run() {
                                 Toast.makeText(mActivity, "UsbSerial RX : " + msg, Toast.LENGTH_SHORT).show();
                             }
                         });
+
+                        //continue;
                     }
                 }
             }

@@ -1,6 +1,7 @@
 package com.gtek.dragon_eye_rc;
 
 import android.annotation.SuppressLint;
+import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
 import android.net.DhcpInfo;
@@ -8,6 +9,7 @@ import android.net.wifi.SupplicantState;
 import android.net.wifi.WifiInfo;
 import android.net.wifi.WifiManager;
 import android.os.PowerManager;
+import android.text.TextUtils;
 import android.util.Log;
 
 import java.io.IOException;
@@ -30,7 +32,7 @@ public class UDPClient implements Runnable {
     private static DatagramPacket packetSend, packetRcv;
     private Thread worker;
     private final AtomicBoolean running = new AtomicBoolean(false);
-    private byte[] msgRcv = new byte[1024]; //接收消息
+
     private int localAddr = 0;
     private int networkId = -1;
 
@@ -75,12 +77,6 @@ public class UDPClient implements Runnable {
 
         try {
             socket.send(packetSend);
-/*
-            Intent intent = new Intent();
-            intent.setAction("udpMsg");
-            intent.putExtra("udpSendMsg", msgSend);
-            mContext.sendBroadcast(intent);
-*/
         } catch (IOException e) {
             e.printStackTrace();
             //Log.i("UDPClient", "Send packet fail !!!");
@@ -113,7 +109,8 @@ public class UDPClient implements Runnable {
 
         System.out.println("UDPClient - Started ...");
 
-        packetRcv = new DatagramPacket(msgRcv, msgRcv.length);
+        byte[] buf = new byte[1024]; //接收消息
+        packetRcv = new DatagramPacket(buf, buf.length);
 
         @SuppressLint("WifiManagerLeak") final WifiManager wifiManager = (WifiManager) mContext.getSystemService(Context.WIFI_SERVICE);
 
@@ -180,11 +177,17 @@ public class UDPClient implements Runnable {
                 }
             }
 
-            if(socket == null)
+            if(socket == null) {
+                try {
+                    Thread.sleep(100);
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
                 continue;
-            
+            }
+
             try {
-                socket.setSoTimeout(100);
+                //socket.setSoTimeout(100);
                 socket.receive(packetRcv);
                 String s = new String(packetRcv.getData(), packetRcv.getOffset(), packetRcv.getLength());
 
@@ -194,20 +197,25 @@ public class UDPClient implements Runnable {
                 if(!pm.isInteractive())
                     continue;
 
-                Intent intent = new Intent();
-                intent.setFlags(Intent.FLAG_RECEIVER_FOREGROUND);
-                intent.setAction("udpMsg");
-                intent.putExtra("udpRcvMsg", packetRcv.getAddress().getHostAddress() + ":" + s);
-                mContext.sendBroadcast(intent);
-
+                Activity a = DragonEyeApplication.getInstance().getActivity();
+                if (s.charAt(0) == '<' && s.charAt(s.length() - 1) == '>') {
+                    DragonEyeBase b = DragonEyeApplication.getInstance().findBaseByAddress(packetRcv.getAddress().getHostAddress());
+                    if (a != null && b != null) {
+                        if (TextUtils.equals(a.getClass().getSimpleName(), "MainActivity")) {
+                            ((MainActivity) a).onBaseTrigger(b, s);
+                        } else if (TextUtils.equals(a.getClass().getSimpleName(), "TimerActivity")) {
+                            ((TimerActivity) a).onBaseTrigger(b, s);
+                        }
+                    }
+                } else {
+                    Intent intent = new Intent();
+                    intent.setFlags(Intent.FLAG_RECEIVER_FOREGROUND);
+                    intent.setAction("udpMsg");
+                    intent.putExtra("udpRcvMsg", packetRcv.getAddress().getHostAddress() + ":" + s);
+                    mContext.sendBroadcast(intent);
+                }
                 //Log.i("Rcv", RcvMsg);
             } catch (SocketTimeoutException e) {
-                /*
-                Intent intent = new Intent();
-                intent.setAction("udpMsg");
-                intent.putExtra("udpPollTimeout", 0);
-                mContext.sendBroadcast(intent);
-                */
                 //e.printStackTrace();
             } catch (IOException e) {
                 e.printStackTrace();

@@ -22,6 +22,7 @@ public class DragonEyeBase {
     private int mTemperature = -40000;
     private int mGpuLoad = 0;
     private int mFps = 0;
+    private int mTriggerLoss = 0;
 
     DragonEyeBase(Context context, String baseType, String address) {
         mContext = context;
@@ -211,6 +212,9 @@ public class DragonEyeBase {
 
     public void setFps(int f) { mFps = f; }
     public int fps() { return mFps; }
+
+    public void setTriggerLoss(int n) { mTriggerLoss = n; }
+    public int triggerLoss() { return mTriggerLoss; }
 
     public class TriggerTimer implements Runnable {
         private final AtomicBoolean isCancelled = new AtomicBoolean(false);

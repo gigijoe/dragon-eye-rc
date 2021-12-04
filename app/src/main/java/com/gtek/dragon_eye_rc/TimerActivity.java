@@ -36,7 +36,7 @@ import static com.gtek.dragon_eye_rc.TimerState.thirtySecondState;
 public class TimerActivity extends AppCompatActivity {
     private Timer mTimer;
     private TimerTask mTimerTask = null;
-    private static int serNoA = -1, serNoB = -1;
+    private static int serNoA = 0, serNoB = 0;
 
     private long mStartTime = 0;
 
@@ -459,73 +459,34 @@ public class TimerActivity extends AppCompatActivity {
         }
     }
 
-    private void triggerHandler(String s) {
-        if(TextUtils.isEmpty(s))
-            return;
-        if(s.charAt(0) == '<' && s.charAt(s.length()-1) == '>') {
-            char base = s.charAt(1);
-            int serNo = Integer.parseInt(s.substring(2, s.length()-1));
-            if(base == 'A' && serNo != serNoA) {
-                if(mRepeatTriggerTick.get() == 0) {
-                    mRepeatTriggerTimer.cancel();
-                    mRepeatTriggerTimer.start();
-                    onBaseA();
-                }
-                serNoA = serNo;
-            }else if(base == 'B' && serNo != serNoB) {
-                if(mRepeatTriggerTick.get() == 0) {
-                    mRepeatTriggerTimer.cancel();
-                    mRepeatTriggerTimer.start();
-                    onBaseB();
-                }
-                serNoB = serNo;
+    void onBaseTrigger(DragonEyeBase b, String s) {
+        char base = s.charAt(1);
+        int serNo = Integer.parseInt(s.substring(2, s.length() - 1));
+        if(base == 'A' && serNo != serNoA) {
+            if(mRepeatTriggerTick.get() == 0) {
+                mRepeatTriggerTimer.cancel();
+                mRepeatTriggerTimer.start();
+                TimerActivity.this.runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        onBaseA();
+                    }
+                });
             }
+            serNoA = serNo;
+        }else if(base == 'B' && serNo != serNoB) {
+            if(mRepeatTriggerTick.get() == 0) {
+                mRepeatTriggerTimer.cancel();
+                mRepeatTriggerTimer.start();
+                TimerActivity.this.runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        onBaseB();
+                    }
+                });
+            }
+            serNoB = serNo;
         }
-    }
-/*
-    private void onUdpRx(String str) {
-        System.out.println("UDP RX : " + str);
-        int index = str.indexOf(':');
-        String addr = str.substring(0, index); // Address insert front by UDPClient
-        String s = str.substring(index + 1);
-        if(TextUtils.isEmpty(addr) || TextUtils.isEmpty(s))
-            return;
-        DragonEyeBase b = DragonEyeApplication.getInstance().findBaseByAddress(addr);
-        if (b != null)
-            triggerHandler(s);
-    }
-
-    void onMulticastRx(String str) {
-        System.out.println("Multicast RX : " + str);
-        int index = str.indexOf(':');
-        String addr = str.substring(0, index); // Address insert front by MulticastThread
-        String s = str.substring(index + 1);
-        if(TextUtils.isEmpty(addr) || TextUtils.isEmpty(s))
-            return;
-        DragonEyeBase b = DragonEyeApplication.getInstance().findBaseByAddress(addr);
-        if (b != null)
-            triggerHandler(s);
-    }
-*/
-    void onMulticastRx(String addr, String s) {
-        System.out.println("Multicast RX : " + s);
-        if(TextUtils.isEmpty(addr) || TextUtils.isEmpty(s))
-            return;
-        DragonEyeBase b = DragonEyeApplication.getInstance().findBaseByAddress(addr);
-        if (b != null) {
-            TimerActivity.this.runOnUiThread(new Runnable() {
-                @Override
-                public void run() {
-                    triggerHandler(s);
-                }
-            });
-
-        }
-    }
-
-    void onUsbRx(String s) {
-        System.out.println("USB RX : " + s);
-        triggerHandler(s);
     }
 /*
     private BroadcastReceiver broadcastReceiver = new BroadcastReceiver() {

@@ -45,7 +45,7 @@ public class TonePlayer implements Runnable {
                             .setSampleRate(sampleRateInHz)
                             .setEncoding(audioFormat)
                             .setChannelMask(channelConfig).build(),
-                    bufferSizeInBytes * 4,
+                    bufferSizeInBytes,
                 AudioTrack.MODE_STREAM,
                 AudioManager.AUDIO_SESSION_ID_GENERATE);
     }
