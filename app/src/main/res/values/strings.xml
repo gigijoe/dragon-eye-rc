@@ -10,8 +10,9 @@
     <string name="rtsp_video">RTSP Video</string>
     <string name="compass_calibration">Compass Calibration</string>
     <string name="f3f_timer">F3F Timer</string>
+    <string name="clear_base">Clear Base</string>
     <string name="about">About</string>
     <string name="title_activity_compass">Compass Settings</string>
 
-    <string name="version">v0.1.8a</string>
+    <string name="version">v0.1.8b</string>
 </resources>

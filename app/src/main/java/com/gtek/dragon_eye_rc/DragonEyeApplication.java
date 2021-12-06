@@ -93,6 +93,7 @@ public class DragonEyeApplication extends Application {
                 //mToneArray = null;
             }
         });
+        thread.setPriority(Thread.MAX_PRIORITY);
         thread.start();
     }
 

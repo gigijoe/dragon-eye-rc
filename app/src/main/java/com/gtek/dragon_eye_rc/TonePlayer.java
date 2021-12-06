@@ -5,11 +5,8 @@ import android.media.AudioAttributes;
 import android.media.AudioFormat;
 import android.media.AudioManager;
 import android.media.AudioTrack;
-import android.os.Build;
 
 import java.io.InputStream;
-import java.util.LinkedList;
-import java.util.Queue;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 public class TonePlayer implements Runnable {
@@ -53,7 +50,6 @@ public class TonePlayer implements Runnable {
     public void startPlay(int audioResourceId) {
         playing.set(true);
         interrupt.set(false);
-
         resourceId = audioResourceId;
     }
 

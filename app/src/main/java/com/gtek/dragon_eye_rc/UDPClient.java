@@ -28,8 +28,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
  */
 public class UDPClient implements Runnable {
     private Context mContext;
-    private static DatagramSocket socket = null;
-    private static DatagramPacket packetSend, packetRcv;
+    private DatagramSocket socket = null;
     private Thread worker;
     private final AtomicBoolean running = new AtomicBoolean(false);
 
@@ -52,11 +51,25 @@ public class UDPClient implements Runnable {
 
     public void start() {
         worker = new Thread(this);
+        worker.setPriority(Thread.MAX_PRIORITY);
         worker.start();
     }
 
     public void stop() {
+        if(socket != null) {
+            socket.close(); /* Trigger exception */
+        }
         running.set(false);
+        try {
+            worker.join();
+        } catch(InterruptedException e) {
+            e.printStackTrace();
+        }
+    }
+
+    public void restart() {
+        stop();
+        start();
     }
 
     public String send(String hostIp, int udpPort, String msgSend) {
@@ -73,7 +86,7 @@ public class UDPClient implements Runnable {
             return null;
         }
 
-        packetSend = new DatagramPacket(msgSend.getBytes(), msgSend.getBytes().length, hostAddress, udpPort);
+        DatagramPacket packetSend = new DatagramPacket(msgSend.getBytes(), msgSend.getBytes().length, hostAddress, udpPort);
 
         try {
             socket.send(packetSend);
@@ -109,12 +122,13 @@ public class UDPClient implements Runnable {
 
         System.out.println("UDPClient - Started ...");
 
-        byte[] buf = new byte[1024]; //接收消息
-        packetRcv = new DatagramPacket(buf, buf.length);
+        byte[] buf = new byte[4096]; //接收消息
+        DatagramPacket packetRcv = new DatagramPacket(buf, buf.length);
 
         @SuppressLint("WifiManagerLeak") final WifiManager wifiManager = (WifiManager) mContext.getSystemService(Context.WIFI_SERVICE);
 
         while (running.get()) {
+            WifiInfo wifiInfo = wifiManager.getConnectionInfo();
             if(wifiManager.isWifiEnabled() == false) {
                 try {
                     Thread.sleep(100);
@@ -124,7 +138,6 @@ public class UDPClient implements Runnable {
                 continue;
             }
 
-            WifiInfo wifiInfo = wifiManager.getConnectionInfo();
             if (wifiInfo.getNetworkId() == -1) {
                 try {
                     Thread.sleep(100);
@@ -140,6 +153,7 @@ public class UDPClient implements Runnable {
                 } catch (InterruptedException e) {
                     e.printStackTrace();
                 }
+                System.out.println("UDPClient - Supplicant NOT Complete !!!");
                 continue;
             }
 
@@ -183,6 +197,7 @@ public class UDPClient implements Runnable {
                 } catch (InterruptedException e) {
                     e.printStackTrace();
                 }
+                System.out.println("UDPClient - Null socket");
                 continue;
             }
 
@@ -190,7 +205,6 @@ public class UDPClient implements Runnable {
                 //socket.setSoTimeout(100);
                 socket.receive(packetRcv);
                 String s = new String(packetRcv.getData(), packetRcv.getOffset(), packetRcv.getLength());
-
                 System.out.println("UDP receive : " + s);
 
                 PowerManager pm = (PowerManager) mContext.getSystemService(Context.POWER_SERVICE);

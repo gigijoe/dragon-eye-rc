@@ -2,7 +2,6 @@ package com.gtek.dragon_eye_rc;
 
 import android.content.Context;
 import android.content.Intent;
-import android.os.CountDownTimer;
 import android.text.TextUtils;
 
 import androidx.annotation.NonNull;

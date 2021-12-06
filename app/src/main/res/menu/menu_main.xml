@@ -5,6 +5,9 @@
         android:id="@+id/item_f3f_timer"
         android:title="@string/f3f_timer" />
     <item
+        android:id="@+id/item_restart"
+        android:title="@string/clear_base" />
+    <item
         android:id="@+id/item_about"
         android:title="@string/about" />
 </menu>

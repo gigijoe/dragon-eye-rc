@@ -26,6 +26,7 @@ import android.net.wifi.WifiInfo;
 import android.net.wifi.WifiManager;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.PowerManager;
 import android.text.TextUtils;
 import android.text.method.LinkMovementMethod;
 import android.text.util.Linkify;
@@ -390,6 +391,8 @@ public class MainActivity extends AppCompatActivity {
         private final AtomicBoolean running = new AtomicBoolean(false);
         private int localAddr = 0;
         private int networkId = -1;
+        private MulticastSocket socket = null;
+        private InetAddress group = null;
 
         private String mAddress = null;
         private int mPort = 0;
@@ -411,11 +414,25 @@ public class MainActivity extends AppCompatActivity {
 
         public void start() {
             worker = new Thread(this);
+            worker.setPriority(Thread.MAX_PRIORITY);
             worker.start();
         }
 
         public void stop() {
+            if(socket != null) {
+                socket.close(); /* Trigger exception */
+            }
             running.set(false);
+            try {
+                worker.join();
+            } catch(InterruptedException e) {
+                e.printStackTrace();
+            }
+        }
+
+        public void restart() {
+            stop();
+            start();
         }
 
         @Override
@@ -424,8 +441,6 @@ public class MainActivity extends AppCompatActivity {
 
             System.out.println("multicastThread - Started ...");
 
-            MulticastSocket socket = null;
-            InetAddress group = null;
             try {
                 group = InetAddress.getByName(mAddress);
             } catch (UnknownHostException e) {
@@ -438,11 +453,12 @@ public class MainActivity extends AppCompatActivity {
             lock.setReferenceCounted(true);
             lock.acquire();
 
-            byte[] buf = new byte[1024];
+            byte[] buf = new byte[4096];
             DatagramPacket packet;
             packet = new DatagramPacket(buf, buf.length);
 
             while (running.get()) {
+                WifiInfo wifiInfo = wifiMgr.getConnectionInfo();
                 if (wifiMgr.isWifiEnabled() == false) {
                     try {
                         Thread.sleep(100);
@@ -452,7 +468,6 @@ public class MainActivity extends AppCompatActivity {
                     continue;
                 }
 
-                WifiInfo wifiInfo = wifiMgr.getConnectionInfo();
                 if (wifiInfo.getNetworkId() == -1) {
                     try {
                         Thread.sleep(100);
@@ -468,7 +483,7 @@ public class MainActivity extends AppCompatActivity {
                     } catch (InterruptedException e) {
                         e.printStackTrace();
                     }
-                    //System.out.println("multicastThread - Supplicant NOT Complete !!!");
+                    System.out.println("multicastThread - Supplicant NOT Complete !!!");
                     continue;
                 }
 
@@ -518,43 +533,41 @@ public class MainActivity extends AppCompatActivity {
                     } catch (InterruptedException e) {
                         e.printStackTrace();
                     }
+                    System.out.println("multicastThread - Null socket");
                     continue;
                 }
 
                 try {
                     //socket.setSoTimeout(100);
                     socket.receive(packet);
+                    String s = new String(packet.getData(), packet.getOffset(), packet.getLength());
+                    System.out.println("Multicast receive : " + s);
+/*
+                    PowerManager pm = (PowerManager) mContext.getSystemService(Context.POWER_SERVICE);
+                    if(!pm.isInteractive())
+                        continue;
+*/
+                    Activity a = DragonEyeApplication.getInstance().getActivity();
+                    if (s.charAt(0) == '<' && s.charAt(s.length() - 1) == '>') {
+                        DragonEyeBase b = DragonEyeApplication.getInstance().findBaseByAddress(packet.getAddress().getHostAddress());
+                        if (a != null && b != null) {
+                            if (TextUtils.equals(a.getClass().getSimpleName(), "MainActivity")) {
+                                //MainActivity.this.onBaseTrigger(b, s);
+                                ((MainActivity) a).onBaseTrigger(b, s);
+                            } else if (TextUtils.equals(a.getClass().getSimpleName(), "TimerActivity")) {
+                                ((TimerActivity) a).onBaseTrigger(b, s);
+                            }
+                        }
+                    } else {
+                        MainActivity.this.onMulticastRx(packet.getAddress().getHostAddress(), s);
+                    }
                 } catch (SocketTimeoutException e) {
                     //e.printStackTrace();
-                    System.out.println("multicastThread - RX timeout");
-                    continue;
-                } catch (SocketException e) {
-                    e.printStackTrace();
+                    //System.out.println("multicastThread - RX timeout");
                     continue;
                 } catch (IOException e) {
                     e.printStackTrace();
                     continue;
-                }
-
-                if (packet.getLength() == 0)
-                    continue;
-
-                String s = new String(packet.getData(), packet.getOffset(), packet.getLength());
-                System.out.println("Multicast receive : " + s);
-
-                Activity a = DragonEyeApplication.getInstance().getActivity();
-                if (s.charAt(0) == '<' && s.charAt(s.length() - 1) == '>') {
-                    DragonEyeBase b = DragonEyeApplication.getInstance().findBaseByAddress(packet.getAddress().getHostAddress());
-                    if (a != null && b != null) {
-                        if (TextUtils.equals(a.getClass().getSimpleName(), "MainActivity")) {
-                            //MainActivity.this.onBaseTrigger(b, s);
-                            ((MainActivity) a).onBaseTrigger(b, s);
-                        } else if (TextUtils.equals(a.getClass().getSimpleName(), "TimerActivity")) {
-                            ((TimerActivity) a).onBaseTrigger(b, s);
-                        }
-                    }
-                } else {
-                    MainActivity.this.onMulticastRx(packet.getAddress().getHostAddress(), s);
                 }
             }
 
@@ -1106,6 +1119,7 @@ public class MainActivity extends AppCompatActivity {
 
         public void start() {
             worker = new Thread(this);
+            worker.setPriority(Thread.MAX_PRIORITY);
             worker.start();
         }
 
@@ -1308,6 +1322,17 @@ public class MainActivity extends AppCompatActivity {
             case R.id.item_f3f_timer:
                 Intent intent = new Intent(getApplicationContext(), TimerActivity.class);
                 startActivity(intent);
+                break;
+            case R.id.item_restart:
+                clearAllDragonEyeBase();
+
+                if(DragonEyeApplication.getInstance().mUdpClient.isRunning())
+                    DragonEyeApplication.getInstance().mUdpClient.restart();
+                if(mMulticastThread2.isRunning())
+                    mMulticastThread2.restart();
+                if(mMulticastThread3.isRunning())
+                    mMulticastThread3.restart();
+
                 break;
             case R.id.item_about: AboutWindow();
                 break;
