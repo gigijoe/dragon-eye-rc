@@ -215,6 +215,7 @@ public class UDPClient implements Runnable {
                 if (s.charAt(0) == '<' && s.charAt(s.length() - 1) == '>') {
                     DragonEyeBase b = DragonEyeApplication.getInstance().findBaseByAddress(packetRcv.getAddress().getHostAddress());
                     if (a != null && b != null) {
+                        //if (a != null) { /* Not necessary a dragon-eye base */
                         if (TextUtils.equals(a.getClass().getSimpleName(), "MainActivity")) {
                             ((MainActivity) a).onBaseTrigger(b, s);
                         } else if (TextUtils.equals(a.getClass().getSimpleName(), "TimerActivity")) {

@@ -551,6 +551,7 @@ public class MainActivity extends AppCompatActivity {
                     if (s.charAt(0) == '<' && s.charAt(s.length() - 1) == '>') {
                         DragonEyeBase b = DragonEyeApplication.getInstance().findBaseByAddress(packet.getAddress().getHostAddress());
                         if (a != null && b != null) {
+                            //if (a != null) { /* Not necessary a dragon-eye base */
                             if (TextUtils.equals(a.getClass().getSimpleName(), "MainActivity")) {
                                 //MainActivity.this.onBaseTrigger(b, s);
                                 ((MainActivity) a).onBaseTrigger(b, s);
@@ -907,7 +908,7 @@ public class MainActivity extends AppCompatActivity {
             }
             if(serNoA != 0 && serNo - serNoA > 1) {
                 System.out.println("Packet loss : " + serNoA + " - " + serNo);
-                triggerLossA++;
+                triggerLossA += (serNo - serNoA);
                 b.setTriggerLoss(triggerLossA);
             }
             serNoA = serNo;
@@ -931,7 +932,7 @@ public class MainActivity extends AppCompatActivity {
             }
             if(serNoB != 0 && serNo - serNoB > 1) {
                 System.out.println("Packet loss : " + serNoB + " - " + serNo);
-                triggerLossB++;
+                triggerLossB += (serNo - serNoB);
                 b.setTriggerLoss(triggerLossB);
             }
             serNoB = serNo;
@@ -1180,8 +1181,6 @@ public class MainActivity extends AppCompatActivity {
                                 Toast.makeText(mActivity, "UsbSerial RX : " + msg, Toast.LENGTH_SHORT).show();
                             }
                         });
-
-                        //continue;
                     }
                 }
             }
