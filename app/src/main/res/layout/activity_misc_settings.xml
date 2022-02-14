@@ -55,6 +55,32 @@
             android:layout_marginBottom="8dp"
             android:background="@color/grey" />
 
+        <TextView
+            android:id="@+id/textInternalWifiApMacAddress"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="16dp"
+            android:layout_marginTop="16dp"
+            android:layout_marginEnd="16dp"
+            android:layout_marginBottom="16dp"
+            android:text="Internal Wifi AP MAC Address"
+            android:textColor="@color/black"
+            android:textSize="16sp" />
+
+        <EditText
+            android:id="@+id/editTextInternalWifiApMacAddress"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="end"
+            android:layout_marginTop="16dp"
+            android:layout_marginEnd="16dp"
+            android:layout_marginBottom="16dp"
+            android:digits="0123456789ABCDEF:"
+            android:importantForAutofill="no"
+            android:inputType="textCapCharacters"
+            android:text="FF:FF:FF:FF:FF:FF"
+            tools:ignore="LabelFor" />
+
         <View
             android:layout_width="match_parent"
             android:layout_height="1dp"

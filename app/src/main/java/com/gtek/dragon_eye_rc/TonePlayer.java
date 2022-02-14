@@ -17,7 +17,7 @@ public class TonePlayer implements Runnable {
     private static int channelConfig = AudioFormat.CHANNEL_OUT_MONO;
     // 音频数据格式:PCM 16位每个样本。保证设备支持。PCM 8位每个样本。不一定能得到设备支持。
     private static int audioFormat = AudioFormat.ENCODING_PCM_16BIT;
-    private byte[] mBuffer;
+    //private byte[] mBuffer;
     // 缓冲区字节大小
     private int bufferSizeInBytes = 0;
     //private static final int BUFFER_SIZE = 2048;
@@ -62,12 +62,6 @@ public class TonePlayer implements Runnable {
         return playing.get();
     }
 
-    private void play(byte[] data) {
-        if(audioTrack.getPlayState() != AudioTrack.PLAYSTATE_PLAYING)
-            return;
-        audioTrack.write(data, 0, data.length);
-    }
-
     @Override
     public void run() {
         byte[] buffer = new byte[160];
@@ -76,7 +70,8 @@ public class TonePlayer implements Runnable {
         try {
             audioTrack.play();
             while (is.read(buffer) != -1 && !interrupt.get()) {
-                play(buffer);
+                if(audioTrack.getPlayState() == AudioTrack.PLAYSTATE_PLAYING)
+                    audioTrack.write(buffer, 0, buffer.length);
             }
             //System.out.println("Finish tone ...");
         } catch (Exception e) {

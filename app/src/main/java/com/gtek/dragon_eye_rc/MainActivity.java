@@ -629,6 +629,16 @@ public class MainActivity extends AppCompatActivity {
         Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
 
+        boolean hasLowLatencyFeature =
+                getPackageManager().hasSystemFeature(PackageManager.FEATURE_AUDIO_LOW_LATENCY);
+
+        System.out.println("android.hardware.audio.low_latenc = " + hasLowLatencyFeature);
+
+        boolean hasProFeature =
+                getPackageManager().hasSystemFeature(PackageManager.FEATURE_AUDIO_PRO);
+
+        System.out.println("android.hardware.audio.pro = " + hasProFeature);
+
         DragonEyeApplication.getInstance().mTonePlayer = new TonePlayer(mContext);
 
         mListView = (ListView) findViewById(R.id.lv);

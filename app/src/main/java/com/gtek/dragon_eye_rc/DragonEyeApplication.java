@@ -30,6 +30,8 @@ public class DragonEyeApplication extends Application {
     private final AtomicBoolean isPriorityPlaying = new AtomicBoolean(false);
     ArrayList<Integer> mToneArray = null;
 
+    private static Thread mTonePlayerThread = null;
+
     synchronized public void playTone(int resourceId) {
         PowerManager pm = (PowerManager) getSystemService(Context.POWER_SERVICE);
         if(!pm.isInteractive())
@@ -40,33 +42,42 @@ public class DragonEyeApplication extends Application {
                 return;
             else
                 mTonePlayer.stopPlay();
+
+            try {
+                mTonePlayerThread.join();
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
         } else {
             isPriorityPlaying.set(false);
         }
 
         mTonePlayer.startPlay(resourceId);
-        Thread t = new Thread(mTonePlayer);
-        t.start();
+        mTonePlayerThread = new Thread(mTonePlayer);
+        mTonePlayerThread.setPriority(Thread.MAX_PRIORITY);
+        mTonePlayerThread.start();
     }
 
     synchronized public void playPriorityTone(int resourceId) {
-        if(mTonePlayer.isPlaying()) {
-            mTonePlayer.stopPlay();
-           if(mToneArray != null)
-               mToneArray.clear();
-        }
+        stopTone();
 
         isPriorityPlaying.set(true);
 
         mTonePlayer.startPlay(resourceId);
-        Thread t = new Thread(mTonePlayer);
-        t.start();
+        mTonePlayerThread = new Thread(mTonePlayer);
+        mTonePlayerThread.setPriority(Thread.MAX_PRIORITY);
+        mTonePlayerThread.start();
     }
 
     synchronized public void playTone(ArrayList<Integer> a) {
         PowerManager pm = (PowerManager) getSystemService(Context.POWER_SERVICE);
         if(!pm.isInteractive())
             return;
+
+        if(a.size() == 0)
+            return;
+
+        stopTone();
 
         mToneArray = a;
         Thread thread = new Thread(new Runnable() {
@@ -76,16 +87,16 @@ public class DragonEyeApplication extends Application {
                 for(int i=0;i<mToneArray.size();i++) {
                     //mTonePlayer.startPlay(tone);
                     mTonePlayer.startPlay(mToneArray.get(i));
-                    Thread t = new Thread(mTonePlayer);
-                    t.start();
+                    mTonePlayerThread = new Thread(mTonePlayer);
+                    //mTonePlayerThread.setPriority(Thread.MAX_PRIORITY);
+                    mTonePlayerThread.start();
 
-                    while(mTonePlayer.isPlaying()) {
-                        try {
-                            Thread.sleep(10);
-                        } catch (InterruptedException e) {
-                            e.printStackTrace();
-                        }
+                    try {
+                        mTonePlayerThread.join();
+                    } catch (Exception e) {
+                        e.printStackTrace();
                     }
+
                     if(mTonePlayer.interrupt.get())
                         break;
                 }
@@ -93,13 +104,19 @@ public class DragonEyeApplication extends Application {
                 //mToneArray = null;
             }
         });
-        thread.setPriority(Thread.MAX_PRIORITY);
+        //thread.setPriority(Thread.MAX_PRIORITY);
         thread.start();
     }
 
     public void stopTone() {
         if(mTonePlayer.isPlaying()) {
             mTonePlayer.stopPlay();
+            try {
+                mTonePlayerThread.join();
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+            mTonePlayerThread = null;
             if(mToneArray != null)
                 mToneArray.clear();
         }

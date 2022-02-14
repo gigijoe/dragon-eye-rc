@@ -17,6 +17,7 @@ import android.view.MenuItem;
 import android.view.View;
 import android.view.WindowManager;
 import android.widget.Button;
+import android.widget.EditText;
 import android.widget.PopupMenu;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -50,6 +51,9 @@ public class MiscSettingsActivity extends AppCompatActivity {
                 deleteVideoFilesDialog();
             }
         });
+
+        EditText mMacEdit = (EditText)findViewById(R.id.editTextInternalWifiApMacAddress);
+
 /*
         TextView t = (TextView) findViewById(R.id.textViewTriggerRelayDebouenceValue);
         View v = (View) findViewById(R.id.textViewTriggerRelayDebouence);
