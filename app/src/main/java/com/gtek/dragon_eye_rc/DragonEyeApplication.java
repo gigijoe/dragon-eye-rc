@@ -31,6 +31,7 @@ public class DragonEyeApplication extends Application {
 
     private final AtomicBoolean isPriorityPlaying = new AtomicBoolean(false);
     ArrayList<String> mToneArray = null;
+    private final String folder = "48k/";
 
     synchronized public void playTone(String asset) {
         PowerManager pm = (PowerManager) getSystemService(Context.POWER_SERVICE);
@@ -49,7 +50,7 @@ public class DragonEyeApplication extends Application {
             isPriorityPlaying.set(false);
         }
 
-        startPlaying(getAssets(), asset);
+        startPlaying(getAssets(), folder + asset);
     }
 
     synchronized public void playPriorityTone(String asset) {
@@ -63,7 +64,7 @@ public class DragonEyeApplication extends Application {
 
         isPriorityPlaying.set(true);
 
-        startPlaying(getAssets(), asset);
+        startPlaying(getAssets(), folder + asset);
     }
 
     synchronized public void playTone(ArrayList<String> a) {
@@ -86,8 +87,8 @@ public class DragonEyeApplication extends Application {
             public void run() {
                 //for(int tone : a) {
                 for(int i=0;i<mToneArray.size();i++) {
-                    //startPlaying(getAssets(), tone);
-                    startPlaying(getAssets(), mToneArray.get(i));
+                    //startPlaying(getAssets(), folder + tone);
+                    startPlaying(getAssets(), folder + mToneArray.get(i));
                      do {
                         try {
                             Thread.sleep(100); // Less than 100ms cause oboe AudioStream crash

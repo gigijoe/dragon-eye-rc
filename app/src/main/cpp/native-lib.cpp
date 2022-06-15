@@ -85,6 +85,8 @@ Java_com_gtek_dragon_1eye_1rc_DragonEyeApplication_native_1setDefaultStreamValue
                                                                                   jclass clazz,
                                                                                   jint default_sample_rate,
                                                                                   jint default_frames_per_burst) {
+    LOGD("%s:%d\n", __PRETTY_FUNCTION__ , __LINE__);
+    LOGD("Default sample rate is %d, default frames per burst is %d\n", (int32_t) default_sample_rate, (int32_t) default_frames_per_burst);
     oboe::DefaultStreamValues::SampleRate = (int32_t) default_sample_rate;
     oboe::DefaultStreamValues::FramesPerBurst = (int32_t) default_frames_per_burst;
 }

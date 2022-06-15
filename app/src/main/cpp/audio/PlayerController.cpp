@@ -178,7 +178,7 @@ bool PlayerController::openStream() {
             ->setFormatConversionAllowed(true)
             ->setPerformanceMode(PerformanceMode::LowLatency)
             ->setSharingMode(SharingMode::Exclusive)
-            ->setSampleRate(8000)
+            ->setSampleRate(48000)
             ->setSampleRateConversionQuality(SampleRateConversionQuality::Medium)
             ->setChannelCount(ChannelCount::Mono)
             ->setDataCallback(this)
