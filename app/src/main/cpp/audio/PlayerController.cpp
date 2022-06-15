@@ -58,6 +58,13 @@ void PlayerController::start(char *fileName) {
  */
 void PlayerController::stop() {
     LOGD("%s:%d\n", __PRETTY_FUNCTION__ , __LINE__);
+    while(mControllerState == PlayerControllerState::Loading) {
+        usleep(1000);
+    }
+
+    if(mControllerState == PlayerControllerState::FailedToLoad)
+        return;
+
     if (mAudioStream){
         mAudioStream->stop();
         mAudioStream->close();

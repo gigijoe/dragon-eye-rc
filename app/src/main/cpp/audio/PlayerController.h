@@ -35,7 +35,7 @@ public:
     //Inherited from oboe::AudioStreamErrorCallback
     void onErrorAfterClose(AudioStream *oboeStream, Result error) override ;
 
-    //PlayerControllerState state() { return mControllerState; }
+    PlayerControllerState state() { return mControllerState; }
 
     bool isPlaying() {
         if(mTrack)

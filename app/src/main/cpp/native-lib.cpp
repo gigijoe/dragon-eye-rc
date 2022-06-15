@@ -99,3 +99,11 @@ Java_com_gtek_dragon_1eye_1rc_DragonEyeApplication_isPlaying(JNIEnv *env, jobjec
     else
         return false;
 }
+extern "C"
+JNIEXPORT jboolean JNICALL
+Java_com_gtek_dragon_1eye_1rc_DragonEyeApplication_isLoading(JNIEnv *env, jobject thiz) {
+    if(mController)
+        return (mController->state() == PlayerControllerState::Loading);
+    else
+        return false;
+}

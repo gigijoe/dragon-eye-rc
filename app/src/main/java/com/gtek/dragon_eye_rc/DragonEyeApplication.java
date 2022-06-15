@@ -89,13 +89,22 @@ public class DragonEyeApplication extends Application {
                 for(int i=0;i<mToneArray.size();i++) {
                     //startPlaying(getAssets(), folder + tone);
                     startPlaying(getAssets(), folder + mToneArray.get(i));
-                     do {
+
+                    while(isLoading()) {
                         try {
-                            Thread.sleep(100); // Less than 100ms cause oboe AudioStream crash
+                            Thread.sleep(10);
                         } catch (InterruptedException e) {
                             e.printStackTrace();
                         }
-                     } while(isPlaying());
+                    }
+
+                     while(isPlaying()) {
+                        try {
+                            Thread.sleep(200); // Less than 100ms cause oboe AudioStream crash
+                        } catch (InterruptedException e) {
+                            e.printStackTrace();
+                        }
+                     }
 
                      stopPlaying();
                 }
@@ -316,6 +325,7 @@ public class DragonEyeApplication extends Application {
     public native void startPlaying(AssetManager assetManager, String fileName);
     public native void stopPlaying();
     public native boolean isPlaying();
+    public native boolean isLoading();
 
     private static native void native_setDefaultStreamValues(int defaultSampleRate,
                                                              int defaultFramesPerBurst);
