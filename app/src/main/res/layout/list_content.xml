@@ -36,7 +36,7 @@
                 android:paddingTop="4dp"
                 android:paddingBottom="2dp"
                 android:textColor="@android:color/black"
-                android:textSize="16sp" />
+                android:textSize="14sp" />
 
             <TextView
                 android:id="@+id/tv_status"
@@ -45,7 +45,7 @@
                 android:paddingTop="2dp"
                 android:paddingBottom="4dp"
                 android:textColor="@android:color/black"
-                android:textSize="24sp" />
+                android:textSize="21sp" />
         </LinearLayout>
 <!---
         <ImageView

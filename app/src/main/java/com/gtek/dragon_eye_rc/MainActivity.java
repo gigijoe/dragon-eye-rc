@@ -256,13 +256,14 @@ public class MainActivity extends AppCompatActivity {
                 result=convertView;
 
                 convertView.setTag(viewHolder);
+
+                Animation animation = AnimationUtils.loadAnimation(mContext, (position > lastPosition) ? R.anim.up_from_bottom : R.anim.down_from_top);
+                result.startAnimation(animation);
             } else {
                 viewHolder = (ViewHolder) convertView.getTag();
                 result=convertView;
             }
 
-            Animation animation = AnimationUtils.loadAnimation(mContext, (position > lastPosition) ? R.anim.up_from_bottom : R.anim.down_from_top);
-            result.startAnimation(animation);
             lastPosition = position;
 
             viewHolder.txtName.setText(b.getType().toString());
@@ -807,7 +808,7 @@ public class MainActivity extends AppCompatActivity {
     @SuppressLint("SetTextI18n")
     private void onWifiConnected(String ssid) {
         if (TextUtils.equals(mWifiSsid.getText(), ssid)) { // Connection changed
-            clearAllDragonEyeBase();
+            //clearAllDragonEyeBase();
 
             if(DragonEyeApplication.getInstance().mUdpClient.isRunning())
                 DragonEyeApplication.getInstance().mUdpClient.stop();
@@ -842,7 +843,7 @@ public class MainActivity extends AppCompatActivity {
         mWifiSsid.setText("WIFI Disconnected !!!");
         mStatusView.setText("All bases off line ...");
 
-        clearAllDragonEyeBase();
+        //clearAllDragonEyeBase();
 
         if(DragonEyeApplication.getInstance().mUdpClient.isRunning())
             DragonEyeApplication.getInstance().mUdpClient.stop();
@@ -1052,10 +1053,8 @@ public class MainActivity extends AppCompatActivity {
                     return;
 
                 DragonEyeBase b = DragonEyeApplication.getInstance().findBaseByAddress(baseHost[1]);
-                if (b != null) {
-                }
-
                 if(b == null) { /* New base */
+                    System.out.println("New base " + baseHost[0] + " " + baseHost[1]);
                     b = new DragonEyeBase(mContext, baseHost[0], baseHost[1]); /* Type, Address */
                     b.multicastReceived();
                     b.online();
