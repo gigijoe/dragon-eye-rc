@@ -88,7 +88,7 @@ public class TimerActivity extends AppCompatActivity {
 
     private void onButtonStart() {
         if(mTimerState == idleState) {
-            DragonEyeApplication.getInstance().playPriorityTone(R.raw.r_go);
+            DragonEyeApplication.getInstance().playPriorityTone("r_go.raw");
             stopTimer();
             mTimerState = thirtySecondState;
             mCountDownSecond = 30;
@@ -101,12 +101,12 @@ public class TimerActivity extends AppCompatActivity {
 
     private void onButtonStop() {
         if(mTimerState == thirtySecondState) {
-            DragonEyeApplication.getInstance().playPriorityTone(R.raw.smb_die);
+            DragonEyeApplication.getInstance().playPriorityTone("smb_die.raw");
             mThirtySecondTimer.cancel();
             mTimerState = finishState;
             mTextViewTimerStatus.setText("Cancelled !!!");
         } else if(mTimerState == speedCourseState) {
-            DragonEyeApplication.getInstance().playPriorityTone(R.raw.smb_die);
+            DragonEyeApplication.getInstance().playPriorityTone("smb_die.raw");
             stopTimer();
             mTimerState = finishState;
             mTextViewTimerStatus.setText("Cancelled !!!");
@@ -123,7 +123,7 @@ public class TimerActivity extends AppCompatActivity {
             if(!mOutside) { // Outside
                 mOutside = true;
                 //System.out.println("mCourseCount.get() = " + mCourseCount.get());
-                DragonEyeApplication.getInstance().playPriorityTone(R.raw.r_outside);
+                DragonEyeApplication.getInstance().playPriorityTone("r_outside.raw");
                 mTextViewTimerStatus.setText("Outside !!!");
             } else { // Enter speed course
                 mThirtySecondTimer.cancel();
@@ -131,14 +131,14 @@ public class TimerActivity extends AppCompatActivity {
                 mCourseCount.incrementAndGet();
                 //System.out.println("mCourseCount.get() = " + mCourseCount.get());
                 startTimer();
-                DragonEyeApplication.getInstance().playPriorityTone(R.raw.r_a);
+                DragonEyeApplication.getInstance().playPriorityTone("r_a.raw");
                 mTextViewTimerStatus.setText("Course " + Integer.toString(mCourseCount.get() + 1));
             }
         } else if(mTimerState == speedCourseState) {
             if(!mOutside) { // Outside
                 mOutside = true;
                 //System.out.println("mCourseCount.get() = " + mCourseCount.get());
-                DragonEyeApplication.getInstance().playPriorityTone(R.raw.r_outside);
+                DragonEyeApplication.getInstance().playPriorityTone("r_outside.raw");
                 mTextViewTimerStatus.setText("Outside !!!");
             } else {
                 if(mCourseCount.get() % 2 == 0)
@@ -148,7 +148,7 @@ public class TimerActivity extends AppCompatActivity {
                 //System.out.println("mCourseCount.get() = " + mCourseCount.get());
 
                 if (mCourseCount.get() < 10) {
-                    DragonEyeApplication.getInstance().playPriorityTone(R.raw.r_a);
+                    DragonEyeApplication.getInstance().playPriorityTone("r_a.raw");
                     mTextViewTimerStatus.setText("Course " + Integer.toString(mCourseCount.get() + 1));
                 } else {
                     long millis = System.currentTimeMillis() - mStartTime;
@@ -176,34 +176,37 @@ public class TimerActivity extends AppCompatActivity {
                             } catch (InterruptedException e) {
                                 e.printStackTrace();
                             }
-                            ArrayList<Integer> toneArray = new ArrayList<>();
-                            toneArray.add(R.raw.r_e);
+                            //ArrayList<Integer> toneArray = new ArrayList<>();
+                            ArrayList<String> toneArray = new ArrayList<>();
+                            toneArray.add("r_e.raw");
 
                             int v = (int) (millis / 1000);
                             if (v <= 20) {
-                                toneArray.add(numberToResourId(v));
+                                toneArray.add(numberToAsset(v));
                             } else if(v < 100) {
-                                toneArray.add(numberToResourId((v / 10) * 10));
-                                toneArray.add(numberToResourId(v % 10));
+                                toneArray.add(numberToAsset((v / 10) * 10));
+                                toneArray.add(numberToAsset(v % 10));
                             } else if(v < 200){
-                                toneArray.add(numberToResourId((v / 100) * 100));
+                                toneArray.add(numberToAsset((v / 100) * 100));
                                 int vv = v % 100;
                                 if(vv <= 20)
-                                    toneArray.add(numberToResourId(vv));
+                                    toneArray.add(numberToAsset(vv));
                                 else {
-                                    toneArray.add(numberToResourId((vv / 10) * 10));
-                                    toneArray.add(numberToResourId(vv % 10));
+                                    toneArray.add(numberToAsset((vv / 10) * 10));
+                                    toneArray.add(numberToAsset(vv % 10));
                                 }
                             }
-                            toneArray.add(R.raw.r_point);
+                            toneArray.add("r_point.raw");
                             v = (int) (millis % 1000) / 10;
-                            toneArray.add(numberToResourId(v / 10));
-                            toneArray.add(numberToResourId(v % 10));
-                            DragonEyeApplication.getInstance().playTone(toneArray);
+                            toneArray.add(numberToAsset(v / 10));
+                            toneArray.add(numberToAsset(v % 10));
+
                             if(millis < 30000) // Less than 30 seconds
-                                toneArray.add(R.raw.smb_world_clear);
+                                toneArray.add("smb_world_clear.raw");
                             else if(millis < 40000) // Less than 40 seconds
-                                toneArray.add(R.raw.smb_stage_clear);
+                                toneArray.add("smb_stage_clear.raw");
+
+                            DragonEyeApplication.getInstance().playTone(toneArray);
                         }
                     });
                     thread.start();
@@ -212,39 +215,39 @@ public class TimerActivity extends AppCompatActivity {
         }
     }
 
-    private int numberToResourId(int number) {
+    private String numberToAsset(int number) {
         switch(number) {
-            case 0: return R.raw.r_0;
-            case 1: return R.raw.r_1;
-            case 2: return R.raw.r_2;
-            case 3: return R.raw.r_3;
-            case 4: return R.raw.r_4;
-            case 5: return R.raw.r_5;
-            case 6: return R.raw.r_6;
-            case 7: return R.raw.r_7;
-            case 8: return R.raw.r_8;
-            case 9: return R.raw.r_9;
-            case 10: return R.raw.r_10;
-            case 11: return R.raw.r_11;
-            case 12: return R.raw.r_12;
-            case 13: return R.raw.r_13;
-            case 14: return R.raw.r_14;
-            case 15: return R.raw.r_15;
-            case 16: return R.raw.r_16;
-            case 17: return R.raw.r_17;
-            case 18: return R.raw.r_18;
-            case 19: return R.raw.r_19;
-            case 20: return R.raw.r_20;
-            case 30: return R.raw.r_30;
-            case 40: return R.raw.r_40;
-            case 50: return R.raw.r_50;
-            case 60: return R.raw.r_60;
-            case 70: return R.raw.r_70;
-            case 80: return R.raw.r_80;
-            case 90: return R.raw.r_90;
-            case 100: return R.raw.r_100;
+            case 0: return "r_0.raw";
+            case 1: return "r_1.raw";
+            case 2: return "r_2.raw";
+            case 3: return "r_3.raw";
+            case 4: return "r_4.raw";
+            case 5: return "r_5.raw";
+            case 6: return "r_6.raw";
+            case 7: return "r_7.raw";
+            case 8: return "r_8.raw";
+            case 9: return "r_9.raw";
+            case 10: return "r_10.raw";
+            case 11: return "r_11.raw";
+            case 12: return "r_12.raw";
+            case 13: return "r_13.raw";
+            case 14: return "r_14.raw";
+            case 15: return "r_15.raw";
+            case 16: return "r_16.raw";
+            case 17: return "r_17.raw";
+            case 18: return "r_18.raw";
+            case 19: return "r_19.raw";
+            case 20: return "r_20.raw";
+            case 30: return "r_30.raw";
+            case 40: return "r_40.raw";
+            case 50: return "r_50.raw";
+            case 60: return "r_60.raw";
+            case 70: return "r_70.raw";
+            case 80: return "r_80.raw";
+            case 90: return "r_90.raw";
+            case 100: return "r_100.raw";
         }
-        return 0;
+        return null;
     }
 
     private void onBaseB() {
@@ -256,9 +259,9 @@ public class TimerActivity extends AppCompatActivity {
                 //System.out.println("mCourseCount.get() = " + mCourseCount.get());
                 mTextViewTimerStatus.setText("Course " + Integer.toString(mCourseCount.get() + 1));
                 if(mCourseCount.get() < 9)
-                    DragonEyeApplication.getInstance().playPriorityTone(R.raw.r_b);
+                    DragonEyeApplication.getInstance().playPriorityTone("r_b.raw");
                 else
-                    DragonEyeApplication.getInstance().playPriorityTone(R.raw.r_final);
+                    DragonEyeApplication.getInstance().playPriorityTone("r_final.raw");
             }
         } else if(mTimerState == finishState) { // Restart game
             mTimerState = idleState;
@@ -275,27 +278,27 @@ public class TimerActivity extends AppCompatActivity {
         if(mCountDownSecond - (tick / 1000) > 1) {
             mCountDownSecond--;
             if(mCountDownSecond == 20) {
-                DragonEyeApplication.getInstance().playTone(R.raw.r_20);
+                DragonEyeApplication.getInstance().playTone("r_20.raw");
             } else if(mCountDownSecond == 10) {
-                DragonEyeApplication.getInstance().playTone(R.raw.r_10);
+                DragonEyeApplication.getInstance().playTone("r_10.raw");
             } else if(mCountDownSecond == 9) {
-                DragonEyeApplication.getInstance().playTone(R.raw.r_9);
+                DragonEyeApplication.getInstance().playTone("r_9.raw");
             } else if(mCountDownSecond == 8) {
-                DragonEyeApplication.getInstance().playTone(R.raw.r_8);
+                DragonEyeApplication.getInstance().playTone("r_8.raw");
             } else if(mCountDownSecond == 7) {
-                DragonEyeApplication.getInstance().playTone(R.raw.r_7);
+                DragonEyeApplication.getInstance().playTone("r_7.raw");
             } else if(mCountDownSecond == 6) {
-                DragonEyeApplication.getInstance().playTone(R.raw.r_6);
+                DragonEyeApplication.getInstance().playTone("r_6.raw");
             } else if(mCountDownSecond == 5) {
-                DragonEyeApplication.getInstance().playTone(R.raw.r_5);
+                DragonEyeApplication.getInstance().playTone("r_5.raw");
             } else if(mCountDownSecond == 4) {
-                DragonEyeApplication.getInstance().playTone(R.raw.r_4);
+                DragonEyeApplication.getInstance().playTone("r_4.raw");
             } else if(mCountDownSecond == 3) {
-                DragonEyeApplication.getInstance().playTone(R.raw.r_3);
+                DragonEyeApplication.getInstance().playTone("r_3.raw");
             } else if(mCountDownSecond == 2) {
-                DragonEyeApplication.getInstance().playTone(R.raw.r_2);
+                DragonEyeApplication.getInstance().playTone("r_2.raw");
             } else if(mCountDownSecond == 1) {
-                DragonEyeApplication.getInstance().playTone(R.raw.r_1);
+                DragonEyeApplication.getInstance().playTone("r_1.raw");
             }
         }
     }
@@ -304,7 +307,7 @@ public class TimerActivity extends AppCompatActivity {
         if(mTimerState == thirtySecondState) {
             mTimerState = speedCourseState;
             startTimer();
-            DragonEyeApplication.getInstance().playTone(R.raw.smb_warning);
+            DragonEyeApplication.getInstance().playTone("smb_warning.raw");
         }
     }
 

@@ -13,9 +13,11 @@ import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.pm.PackageManager;
+import android.content.res.AssetManager;
 import android.graphics.Color;
 import android.hardware.usb.UsbDeviceConnection;
 import android.hardware.usb.UsbManager;
+import android.media.AudioManager;
 import android.net.ConnectivityManager;
 import android.net.DhcpInfo;
 import android.net.Network;
@@ -56,6 +58,8 @@ import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.hoho.android.usbserial.driver.UsbSerialDriver;
 import com.hoho.android.usbserial.driver.UsbSerialPort;
 import com.hoho.android.usbserial.driver.UsbSerialProber;
+
+import org.videolan.BuildConfig;
 
 import java.io.IOException;
 import java.math.BigInteger;
@@ -617,6 +621,7 @@ public class MainActivity extends AppCompatActivity {
         }
     };
 */
+
     @RequiresApi(api = Build.VERSION_CODES.LOLLIPOP)
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -639,7 +644,7 @@ public class MainActivity extends AppCompatActivity {
 
         System.out.println("android.hardware.audio.pro = " + hasProFeature);
 
-        DragonEyeApplication.getInstance().mTonePlayer = new TonePlayer(mContext);
+        //DragonEyeApplication.getInstance().mTonePlayer = new TonePlayer(mContext);
 
         mListView = (ListView) findViewById(R.id.lv);
         mListViewAdapter = new ListViewAdapter(DragonEyeApplication.getInstance().mBaseList, getApplicationContext());
@@ -745,7 +750,9 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onAvailable(@NonNull final Network network) {
                 super.onAvailable(network);
-                connectivityManager.bindProcessToNetwork(network);
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                    connectivityManager.bindProcessToNetwork(network);
+                }
                 //connectivityManager.unregisterNetworkCallback(this);
 
                 @SuppressLint("WifiManagerLeak") final WifiManager wifiMgr = (WifiManager) getApplicationContext().getSystemService(Context.WIFI_SERVICE);
@@ -901,7 +908,7 @@ public class MainActivity extends AppCompatActivity {
         if((base == 'A' && serNo != serNoA)) {
             if (!isPaused.get()) {
                 System.out.println("Play tone ...");
-                DragonEyeApplication.getInstance().playTone(R.raw.smb_jump_small); // R.raw.r_a
+                DragonEyeApplication.getInstance().playTone("smb_jump_small.raw"); // R.raw.r_a
             }
             if(b == null) {
                 DragonEyeApplication.getInstance().triggerBase(DragonEyeBase.Type.BASE_A);
@@ -925,7 +932,7 @@ public class MainActivity extends AppCompatActivity {
         } else if((base == 'B' && serNo != serNoB)) {
             if (!isPaused.get()) {
                 System.out.println("Play tone ...");
-                DragonEyeApplication.getInstance().playTone(R.raw.smb_jump_super); // R.raw.r_b
+                DragonEyeApplication.getInstance().playTone("smb_jump_super.raw"); // R.raw.r_b
             }
             if(b == null) {
                 DragonEyeApplication.getInstance().triggerBase(DragonEyeBase.Type.BASE_B);
@@ -1287,7 +1294,8 @@ public class MainActivity extends AppCompatActivity {
 
     @Override
     protected void onStop() {
-        DragonEyeApplication.getInstance().mTonePlayer.stopPlay();
+        //DragonEyeApplication.getInstance().mTonePlayer.stopPlay();
+        DragonEyeApplication.getInstance().stopPlaying();
         super.onStop();
     }
 

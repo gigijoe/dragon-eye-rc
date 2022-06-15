@@ -3,10 +3,13 @@ package com.gtek.dragon_eye_rc;
 import android.app.Activity;
 import android.app.Application;
 import android.content.Context;
+import android.content.res.AssetManager;
+import android.media.AudioManager;
 import android.net.ConnectivityManager;
 import android.net.Network;
 import android.net.NetworkCapabilities;
 import android.net.NetworkRequest;
+import android.os.Build;
 import android.os.PowerManager;
 import android.text.TextUtils;
 import android.util.Log;
@@ -26,56 +29,54 @@ public class DragonEyeApplication extends Application {
     public UDPClient mUdpClient = null;
     public int mSelectedBaseIndex = -1;
 
-    public TonePlayer mTonePlayer = null;
     private final AtomicBoolean isPriorityPlaying = new AtomicBoolean(false);
-    ArrayList<Integer> mToneArray = null;
+    ArrayList<String> mToneArray = null;
 
-    private static Thread mTonePlayerThread = null;
-
-    synchronized public void playTone(int resourceId) {
+    synchronized public void playTone(String asset) {
         PowerManager pm = (PowerManager) getSystemService(Context.POWER_SERVICE);
         if(!pm.isInteractive())
             return;
 
-        if(mTonePlayer.isPlaying()) {
+        System.out.println("playTone " + asset);
+
+        if(isPlaying()) {
+            System.out.println("isPlaying ...");
             if(isPriorityPlaying.get())
                 return;
             else
-                mTonePlayer.stopPlay();
-
-            try {
-                mTonePlayerThread.join();
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
+                stopPlaying();
         } else {
             isPriorityPlaying.set(false);
         }
 
-        mTonePlayer.startPlay(resourceId);
-        mTonePlayerThread = new Thread(mTonePlayer);
-        mTonePlayerThread.setPriority(Thread.MAX_PRIORITY);
-        mTonePlayerThread.start();
+        startPlaying(getAssets(), asset);
     }
 
-    synchronized public void playPriorityTone(int resourceId) {
+    synchronized public void playPriorityTone(String asset) {
+        PowerManager pm = (PowerManager) getSystemService(Context.POWER_SERVICE);
+        if(!pm.isInteractive())
+            return;
+
+        System.out.println("playPriorityTone " + asset);
+
         stopTone();
 
         isPriorityPlaying.set(true);
 
-        mTonePlayer.startPlay(resourceId);
-        mTonePlayerThread = new Thread(mTonePlayer);
-        mTonePlayerThread.setPriority(Thread.MAX_PRIORITY);
-        mTonePlayerThread.start();
+        startPlaying(getAssets(), asset);
     }
 
-    synchronized public void playTone(ArrayList<Integer> a) {
+    synchronized public void playTone(ArrayList<String> a) {
         PowerManager pm = (PowerManager) getSystemService(Context.POWER_SERVICE);
         if(!pm.isInteractive())
             return;
 
         if(a.size() == 0)
             return;
+
+        for(int i=0;i<a.size();i++) {
+            System.out.println("playTone " + a.get(i));
+        }
 
         stopTone();
 
@@ -85,20 +86,17 @@ public class DragonEyeApplication extends Application {
             public void run() {
                 //for(int tone : a) {
                 for(int i=0;i<mToneArray.size();i++) {
-                    //mTonePlayer.startPlay(tone);
-                    mTonePlayer.startPlay(mToneArray.get(i));
-                    mTonePlayerThread = new Thread(mTonePlayer);
-                    //mTonePlayerThread.setPriority(Thread.MAX_PRIORITY);
-                    mTonePlayerThread.start();
+                    //startPlaying(getAssets(), tone);
+                    startPlaying(getAssets(), mToneArray.get(i));
+                     do {
+                        try {
+                            Thread.sleep(100); // Less than 100ms cause oboe AudioStream crash
+                        } catch (InterruptedException e) {
+                            e.printStackTrace();
+                        }
+                     } while(isPlaying());
 
-                    try {
-                        mTonePlayerThread.join();
-                    } catch (Exception e) {
-                        e.printStackTrace();
-                    }
-
-                    if(mTonePlayer.interrupt.get())
-                        break;
+                     stopPlaying();
                 }
                 mToneArray.clear();
                 //mToneArray = null;
@@ -109,14 +107,9 @@ public class DragonEyeApplication extends Application {
     }
 
     public void stopTone() {
-        if(mTonePlayer.isPlaying()) {
-            mTonePlayer.stopPlay();
-            try {
-                mTonePlayerThread.join();
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
-            mTonePlayerThread = null;
+        System.out.println("stopTone");
+        if(isPlaying()) {
+            stopPlaying();
             if(mToneArray != null)
                 mToneArray.clear();
         }
@@ -250,7 +243,9 @@ public class DragonEyeApplication extends Application {
         cm.requestNetwork(requestBuilder.build(), new ConnectivityManager.NetworkCallback() {
             @Override
             public void onAvailable(Network network) {
-                cm.bindProcessToNetwork(network);
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                    cm.bindProcessToNetwork(network);
+                }
             }
 
             @Override
@@ -262,14 +257,15 @@ public class DragonEyeApplication extends Application {
         mInstance = this;
 
         mUdpClient = new UDPClient(getApplicationContext());
-        mTonePlayer = new TonePlayer(getApplicationContext());
+
+        setDefaultStreamValues(this);
     }
 
     @Override
     public void onTerminate() {
         Log.i("DragonEyeApplication", "onTerminate");
         mUdpClient.stop();
-        mTonePlayer.stopPlay();
+        stopPlaying();
         super.onTerminate();
     }
 
@@ -302,5 +298,28 @@ public class DragonEyeApplication extends Application {
         {
             return null;
         }
+    }
+
+    static void setDefaultStreamValues(Context context) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR1){
+            AudioManager myAudioMgr = (AudioManager) context.getSystemService(Context.AUDIO_SERVICE);
+            String sampleRateStr = myAudioMgr.getProperty(AudioManager.PROPERTY_OUTPUT_SAMPLE_RATE);
+            int defaultSampleRate = Integer.parseInt(sampleRateStr);
+            String framesPerBurstStr = myAudioMgr.getProperty(AudioManager.PROPERTY_OUTPUT_FRAMES_PER_BUFFER);
+            int defaultFramesPerBurst = Integer.parseInt(framesPerBurstStr);
+            native_setDefaultStreamValues(defaultSampleRate, defaultFramesPerBurst);
+        }
+    }
+
+    public native String stringFromJNI();
+    public native void startPlaying(AssetManager assetManager, String fileName);
+    public native void stopPlaying();
+    public native boolean isPlaying();
+
+    private static native void native_setDefaultStreamValues(int defaultSampleRate,
+                                                             int defaultFramesPerBurst);
+
+    static {
+        System.loadLibrary("native-lib");
     }
 }
