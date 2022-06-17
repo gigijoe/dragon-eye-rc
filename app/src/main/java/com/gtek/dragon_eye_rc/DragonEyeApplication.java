@@ -276,6 +276,8 @@ public class DragonEyeApplication extends Application {
         audioCache(getAssets(), audioAssetFolder + "r_b.raw");
         audioCache(getAssets(), audioAssetFolder + "r_final.raw");
         audioCache(getAssets(), audioAssetFolder + "r_e.raw");
+        audioCache(getAssets(), audioAssetFolder + "smb_jump_small.raw");
+        audioCache(getAssets(), audioAssetFolder + "smb_jump_super.raw");
     }
 
     @Override
