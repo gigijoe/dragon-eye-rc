@@ -24,6 +24,7 @@ class PlayerController : public AudioStreamDataCallback, AudioStreamErrorCallbac
 public:
     explicit PlayerController(AAssetManager&);
     void start(char *fileName);
+    void startCache(const float *data, size_t size);
     void stop();
     void pause();
 
@@ -58,8 +59,10 @@ private:
     std::unique_ptr<Player> mTrack;
 
     void load();
+    void loadCache(const float *data, size_t size);
     bool openStream();
     bool setupAudioSources();
+    bool setupCacheAudioSources(const float *data, size_t size);
     void setAudioTrackFilename(char *filename);
 
 };

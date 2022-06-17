@@ -47,6 +47,10 @@ char* convertJString(JNIEnv* env, jstring str)
     return const_cast<char *>(strChars);
 }
 
+#include <map>
+
+std::map<std::string, AAssetDataSource *> audioCache;
+
 std::unique_ptr<PlayerController> mController;
 
 extern "C"
@@ -58,15 +62,58 @@ Java_com_gtek_dragon_1eye_1rc_DragonEyeApplication_stringFromJNI(JNIEnv *env, jo
 
 extern "C"
 JNIEXPORT void JNICALL
+Java_com_gtek_dragon_1eye_1rc_DragonEyeApplication_audioCache(JNIEnv *env, jobject thiz,
+                                                              jobject jAsset_manager,
+                                                              jstring file_name) {
+    LOGD("%s:%d\n", __PRETTY_FUNCTION__ , __LINE__);
+    AAssetManager *assetManager = AAssetManager_fromJava(env,jAsset_manager);
+    char* trackFileName = convertJString(env,file_name);
+    AudioProperties targetProperties;
+    AAssetDataSource *a = AAssetDataSource::newFromPCM16Asset(*assetManager, trackFileName, targetProperties);
+
+    //float *data = new float[a->getSize() / sizeof(float)];
+    //memcpy(data, a->getData(), a->getSize());
+    audioCache.insert(std::make_pair(std::string(trackFileName), a));
+}
+
+extern "C"
+JNIEXPORT void JNICALL
+Java_com_gtek_dragon_1eye_1rc_DragonEyeApplication_startCachePlaying(JNIEnv *env, jobject thiz,
+                                                                     jobject jAsset_manager,
+                                                                     jstring file_name) {
+    LOGD("%s:%d\n", __PRETTY_FUNCTION__ , __LINE__);
+    char* trackFileName = convertJString(env,file_name);
+    auto item = audioCache.find(std::string(trackFileName));
+    if (item == audioCache.end()) {
+        return;
+    }
+
+    AAssetManager *assetManager = AAssetManager_fromJava(env,jAsset_manager);
+    mController=std::make_unique<PlayerController>(*assetManager);
+
+    AAssetDataSource *a = item->second;
+    mController->startCache(a->getData(), a->getSize());
+}
+
+extern "C"
+JNIEXPORT void JNICALL
 Java_com_gtek_dragon_1eye_1rc_DragonEyeApplication_startPlaying(JNIEnv *env, jobject thiz,
                                                                 jobject jAsset_manager,
                                                                 jstring file_name) {
     LOGD("%s:%d\n", __PRETTY_FUNCTION__ , __LINE__);
+    // TODO: implement startCachePlaying()
+    char* trackFileName = convertJString(env,file_name);
+    auto item = audioCache.find(std::string(trackFileName));
+    if (item != audioCache.end()) {
+        Java_com_gtek_dragon_1eye_1rc_DragonEyeApplication_startCachePlaying(env, thiz, jAsset_manager, file_name);
+        return;
+    }
+
     AAssetManager *assetManager = AAssetManager_fromJava(env,jAsset_manager);
 
     mController=std::make_unique<PlayerController>(*assetManager);
 
-    char* trackFileName = convertJString(env,file_name);
+    //char* trackFileName = convertJString(env,file_name);
 
     mController->start(trackFileName);
 }
@@ -92,6 +139,7 @@ Java_com_gtek_dragon_1eye_1rc_DragonEyeApplication_native_1setDefaultStreamValue
 }
 
 extern "C"
+
 JNIEXPORT jboolean JNICALL
 Java_com_gtek_dragon_1eye_1rc_DragonEyeApplication_isPlaying(JNIEnv *env, jobject thiz) {
     if(mController)

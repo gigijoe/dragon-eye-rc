@@ -106,3 +106,17 @@ AAssetDataSource* AAssetDataSource::newFromPCM16Asset(AAssetManager &assetManage
 
     return new AAssetDataSource(std::move(outputBuffer), numSamples, targetProperties);
 }
+
+AAssetDataSource* AAssetDataSource::newFromFloat(AAssetManager &assetManager,
+                                     const float *data,
+                                     const size_t size,
+                                     const AudioProperties targetProperties)
+{
+    off_t numSamples = size; // PCM16
+    // Now we know the exact number of samples we can create a float array to hold the audio data
+    auto outputBuffer  = std::make_unique<float[]>(numSamples);
+
+    memcpy(outputBuffer.get(), data, size * sizeof(float));
+
+    return new AAssetDataSource(std::move(outputBuffer), numSamples, targetProperties);
+}

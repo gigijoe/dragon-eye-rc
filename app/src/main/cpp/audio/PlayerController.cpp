@@ -34,6 +34,28 @@ void PlayerController::load() {
     mControllerState=PlayerControllerState::Playing;
 }
 
+void PlayerController::loadCache(const float *data, size_t size) {
+    if (!openStream()){
+        mControllerState=PlayerControllerState::FailedToLoad;
+        return;
+    }
+
+    if (!setupCacheAudioSources(data, size)){
+        mControllerState=PlayerControllerState::FailedToLoad;
+        return;
+    }
+
+    // starting the stream, after this onAudioReady method of DataCallbackResult will be called.
+    Result result = mAudioStream->requestStart();
+    if (result!=Result::OK){
+        LOGE("Failed to start stream. Error: %s",convertToText(result));
+        mControllerState=PlayerControllerState::FailedToLoad;
+        return;
+    }
+
+    mControllerState=PlayerControllerState::Playing;
+}
+
 /**
  * sets the audio filename, call the load method.
  * @param fileName : name of the asset audio file.
@@ -50,6 +72,19 @@ void PlayerController::start(char *fileName) {
         // async returns a future, we must store this future to avoid blocking. It's not sufficient
         // to store this in a local variable as its destructor will block until PlayerController::load completes.
         mLoadingResult =std::async(&PlayerController::load,this);
+    }
+}
+
+void PlayerController::startCache(const float *data, size_t size) {
+    if (paused){
+        LOGD("PlayerController, setPlaying true");
+        mTrack->setPlaying(true);
+    }
+    else{
+        LOGD("PlayerController, starting Player");
+        // async returns a future, we must store this future to avoid blocking. It's not sufficient
+        // to store this in a local variable as its destructor will block until PlayerController::load completes.
+        mLoadingResult =std::async(&PlayerController::loadCache,this, data, size);
     }
 }
 
@@ -220,6 +255,30 @@ bool PlayerController::setupAudioSources() {
             AAssetDataSource::newFromPCM16Asset(mAssetManager,trackFilename,targetProperties)
     };
 #endif
+    if (trackSource== nullptr){
+        LOGE("Could not load source data for track: %s",trackFilename);
+        return false;
+    }
+
+    mTrack = std::make_unique<Player>(trackSource);
+    mTrack->setPlaying(true);
+    mTrack->setLooping(false);
+
+    return true;
+}
+
+bool PlayerController::setupCacheAudioSources(const float *data, size_t size) {
+    //Set the properties of our audio source(s) to match that of our audio stream
+    AudioProperties targetProperties{
+            .channelCount = mAudioStream->getChannelCount(),
+            .sampleRate = mAudioStream->getSampleRate()
+    };
+
+    // Create a data source and player for our track
+    std::shared_ptr<AAssetDataSource> trackSource{
+            AAssetDataSource::newFromFloat(mAssetManager, data, size, targetProperties)
+    };
+
     if (trackSource== nullptr){
         LOGE("Could not load source data for track: %s",trackFilename);
         return false;

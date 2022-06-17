@@ -22,6 +22,12 @@ public:
     static AAssetDataSource* newFromPCM16Asset(AAssetManager &assetManager,
                                                         const char *filename,
                                                         const AudioProperties targetProperties);
+
+    static AAssetDataSource* newFromFloat(AAssetManager &assetManager,
+                                               const float *data,
+                                               const size_t size,
+                                               const AudioProperties targetProperties);
+
 private:
     AAssetDataSource(std::unique_ptr<float[]> data, size_t size, const AudioProperties properties)
     :mBuffer(std::move(data)),
