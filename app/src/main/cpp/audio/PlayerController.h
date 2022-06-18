@@ -16,6 +16,7 @@ using namespace oboe;
 enum class PlayerControllerState{
     Loading,
     Playing,
+    Ending,
     FailedToLoad
 };
 
@@ -23,12 +24,11 @@ class PlayerController : public AudioStreamDataCallback, AudioStreamErrorCallbac
 
 public:
     explicit PlayerController(AAssetManager&);
+    ~PlayerController();
     void start(char *fileName);
     void startCache(const float *data, size_t size);
     void stop();
-    void pause();
-
-    bool paused=false;
+    bool openStream();
 
     // Inherited from oboe::AudioStreamDataCallback
     DataCallbackResult onAudioReady(AudioStream *oboeStream, void* audioData, int32_t numFrames) override ;
@@ -50,7 +50,7 @@ private:
     std::shared_ptr<AudioStream> mAudioStream;
     std::atomic<int64_t> mCurrentFrame{0};
     std::atomic<int64_t> mSongPosition{0};
-    std::atomic<PlayerControllerState> mControllerState{PlayerControllerState::Loading};
+    std::atomic<PlayerControllerState> mControllerState{PlayerControllerState::Ending};
     std::future<void> mLoadingResult;
     std::atomic<int64_t> mLastUpdateTime { 0 };
 
@@ -60,11 +60,10 @@ private:
 
     void load();
     void loadCache(const float *data, size_t size);
-    bool openStream();
+
     bool setupAudioSources();
     bool setupCacheAudioSources(const float *data, size_t size);
     void setAudioTrackFilename(char *filename);
-
 };
 
 #endif //OBOE_AUDIO_PLAYER_PLAYERCONTROLLER_H

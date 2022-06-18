@@ -50,7 +50,7 @@ public class DragonEyeApplication extends Application {
             isPriorityPlaying.set(false);
         }
 
-        startPlaying(getAssets(), audioAssetFolder + asset);
+        startPlaying(audioAssetFolder + asset);
     }
 
     synchronized public void playPriorityTone(String asset) {
@@ -64,7 +64,7 @@ public class DragonEyeApplication extends Application {
 
         isPriorityPlaying.set(true);
 
-        startPlaying(getAssets(), audioAssetFolder + asset);
+        startPlaying(audioAssetFolder + asset);
     }
 
     synchronized public void playTone(ArrayList<String> a) {
@@ -87,8 +87,8 @@ public class DragonEyeApplication extends Application {
             public void run() {
                 //for(int tone : a) {
                 for(int i=0;i<mToneArray.size();i++) {
-                    //startPlaying(getAssets(), audioAssetFolder + tone);
-                    startPlaying(getAssets(), audioAssetFolder + mToneArray.get(i));
+                    //startPlaying(audioAssetFolder + tone);
+                    startPlaying(audioAssetFolder + mToneArray.get(i));
 
                     while(isLoading()) {
                         try {
@@ -98,15 +98,15 @@ public class DragonEyeApplication extends Application {
                         }
                     }
 
-                     while(isPlaying()) {
+                    while(isPlaying()) {
                         try {
-                            Thread.sleep(200); // Less than 100ms cause oboe AudioStream crash
+                            Thread.sleep(10);
                         } catch (InterruptedException e) {
                             e.printStackTrace();
                         }
-                     }
+                    }
 
-                     stopPlaying();
+                    stopPlaying();
                 }
                 mToneArray.clear();
                 //mToneArray = null;
@@ -270,6 +270,7 @@ public class DragonEyeApplication extends Application {
 
         setDefaultStreamValues(this);
 
+        audioInit(getAssets());
         audioCache(getAssets(), audioAssetFolder + "r_go.raw");
         audioCache(getAssets(), audioAssetFolder + "r_outside.raw");
         audioCache(getAssets(), audioAssetFolder + "r_a.raw");
@@ -331,9 +332,10 @@ public class DragonEyeApplication extends Application {
     }
 
     public native String stringFromJNI();
+    public native void audioInit(AssetManager assetManager);
     public native void audioCache(AssetManager assetManager, String fileName);
-    public native void startCachePlaying(AssetManager assetManager, String fileName);
-    public native void startPlaying(AssetManager assetManager, String fileName);
+    public native void startCachePlaying(String fileName);
+    public native void startPlaying(String fileName);
     public native void stopPlaying();
     public native boolean isPlaying();
     public native boolean isLoading();

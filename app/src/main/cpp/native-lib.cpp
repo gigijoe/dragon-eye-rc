@@ -65,7 +65,7 @@ JNIEXPORT void JNICALL
 Java_com_gtek_dragon_1eye_1rc_DragonEyeApplication_audioCache(JNIEnv *env, jobject thiz,
                                                               jobject jAsset_manager,
                                                               jstring file_name) {
-    LOGD("%s:%d\n", __PRETTY_FUNCTION__ , __LINE__);
+    //LOGD("%s:%d\n", __PRETTY_FUNCTION__ , __LINE__);
     AAssetManager *assetManager = AAssetManager_fromJava(env,jAsset_manager);
     char* trackFileName = convertJString(env,file_name);
     AudioProperties targetProperties;
@@ -79,17 +79,13 @@ Java_com_gtek_dragon_1eye_1rc_DragonEyeApplication_audioCache(JNIEnv *env, jobje
 extern "C"
 JNIEXPORT void JNICALL
 Java_com_gtek_dragon_1eye_1rc_DragonEyeApplication_startCachePlaying(JNIEnv *env, jobject thiz,
-                                                                     jobject jAsset_manager,
                                                                      jstring file_name) {
-    LOGD("%s:%d\n", __PRETTY_FUNCTION__ , __LINE__);
+    //LOGD("%s:%d\n", __PRETTY_FUNCTION__ , __LINE__);
     char* trackFileName = convertJString(env,file_name);
     auto item = audioCache.find(std::string(trackFileName));
     if (item == audioCache.end()) {
         return;
     }
-
-    AAssetManager *assetManager = AAssetManager_fromJava(env,jAsset_manager);
-    mController=std::make_unique<PlayerController>(*assetManager);
 
     AAssetDataSource *a = item->second;
     mController->startCache(a->getData(), a->getSize());
@@ -98,22 +94,14 @@ Java_com_gtek_dragon_1eye_1rc_DragonEyeApplication_startCachePlaying(JNIEnv *env
 extern "C"
 JNIEXPORT void JNICALL
 Java_com_gtek_dragon_1eye_1rc_DragonEyeApplication_startPlaying(JNIEnv *env, jobject thiz,
-                                                                jobject jAsset_manager,
                                                                 jstring file_name) {
-    LOGD("%s:%d\n", __PRETTY_FUNCTION__ , __LINE__);
-    // TODO: implement startCachePlaying()
+    //LOGD("%s:%d\n", __PRETTY_FUNCTION__ , __LINE__);
     char* trackFileName = convertJString(env,file_name);
     auto item = audioCache.find(std::string(trackFileName));
     if (item != audioCache.end()) {
-        Java_com_gtek_dragon_1eye_1rc_DragonEyeApplication_startCachePlaying(env, thiz, jAsset_manager, file_name);
+        Java_com_gtek_dragon_1eye_1rc_DragonEyeApplication_startCachePlaying(env, thiz, file_name);
         return;
     }
-
-    AAssetManager *assetManager = AAssetManager_fromJava(env,jAsset_manager);
-
-    mController=std::make_unique<PlayerController>(*assetManager);
-
-    //char* trackFileName = convertJString(env,file_name);
 
     mController->start(trackFileName);
 }
@@ -121,8 +109,8 @@ Java_com_gtek_dragon_1eye_1rc_DragonEyeApplication_startPlaying(JNIEnv *env, job
 extern "C"
 JNIEXPORT void JNICALL
 Java_com_gtek_dragon_1eye_1rc_DragonEyeApplication_stopPlaying(JNIEnv *env, jobject thiz) {
-    LOGD("%s:%d\n", __PRETTY_FUNCTION__ , __LINE__);
-    if(mController)
+    //LOGD("%s:%d\n", __PRETTY_FUNCTION__ , __LINE__);
+    if(mController.get())
         mController->stop();
 }
 
@@ -132,7 +120,7 @@ Java_com_gtek_dragon_1eye_1rc_DragonEyeApplication_native_1setDefaultStreamValue
                                                                                   jclass clazz,
                                                                                   jint default_sample_rate,
                                                                                   jint default_frames_per_burst) {
-    LOGD("%s:%d\n", __PRETTY_FUNCTION__ , __LINE__);
+    //LOGD("%s:%d\n", __PRETTY_FUNCTION__ , __LINE__);
     LOGD("Default sample rate is %d, default frames per burst is %d\n", (int32_t) default_sample_rate, (int32_t) default_frames_per_burst);
     oboe::DefaultStreamValues::SampleRate = (int32_t) default_sample_rate;
     oboe::DefaultStreamValues::FramesPerBurst = (int32_t) default_frames_per_burst;
@@ -142,7 +130,7 @@ extern "C"
 
 JNIEXPORT jboolean JNICALL
 Java_com_gtek_dragon_1eye_1rc_DragonEyeApplication_isPlaying(JNIEnv *env, jobject thiz) {
-    if(mController)
+    if(mController.get())
         return mController->isPlaying();
     else
         return false;
@@ -150,8 +138,18 @@ Java_com_gtek_dragon_1eye_1rc_DragonEyeApplication_isPlaying(JNIEnv *env, jobjec
 extern "C"
 JNIEXPORT jboolean JNICALL
 Java_com_gtek_dragon_1eye_1rc_DragonEyeApplication_isLoading(JNIEnv *env, jobject thiz) {
-    if(mController)
+    if(mController.get())
         return (mController->state() == PlayerControllerState::Loading);
     else
         return false;
+}
+
+extern "C"
+JNIEXPORT void JNICALL
+Java_com_gtek_dragon_1eye_1rc_DragonEyeApplication_audioInit(JNIEnv *env, jobject thiz,
+                                                             jobject jAsset_manager) {
+    //LOGD("%s:%d\n", __PRETTY_FUNCTION__ , __LINE__);
+    AAssetManager *assetManager = AAssetManager_fromJava(env,jAsset_manager);
+    mController=std::make_unique<PlayerController>(*assetManager);
+    mController->openStream();
 }

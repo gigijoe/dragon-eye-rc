@@ -68,7 +68,6 @@ AAssetDataSource* AAssetDataSource::newFromCompressedAsset(AAssetManager &assetM
     AAsset_close(asset);
 
     return new AAssetDataSource(std::move(outputBuffer), numSamples, targetProperties);
-
 }
 
 #include <fstream>

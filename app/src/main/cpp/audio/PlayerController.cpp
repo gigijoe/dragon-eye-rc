@@ -9,20 +9,27 @@
 
 PlayerController::PlayerController(AAssetManager &assetManager):mAssetManager(assetManager) {
 }
+
+PlayerController::~PlayerController() {
+    //LOGD("%s:%d\n", __PRETTY_FUNCTION__ , __LINE__);
+    if (mAudioStream.get()){
+        mAudioStream->stop();
+        mAudioStream->close();
+        mAudioStream.reset();
+    }
+}
+
 /**
  * Initializes stream and player then eventually starting the stream.
  */
 void PlayerController::load() {
-    if (!openStream()){
-        mControllerState=PlayerControllerState::FailedToLoad;
-        return;
-    }
-
+    //LOGD("%s:%d\n", __PRETTY_FUNCTION__ , __LINE__);
     if (!setupAudioSources()){
         mControllerState=PlayerControllerState::FailedToLoad;
         return;
     }
 
+    //LOGD("%s:%d\n", __PRETTY_FUNCTION__ , __LINE__);
     // starting the stream, after this onAudioReady method of DataCallbackResult will be called.
     Result result = mAudioStream->requestStart();
     if (result!=Result::OK){
@@ -31,20 +38,18 @@ void PlayerController::load() {
         return;
     }
 
+    //LOGD("%s:%d\n", __PRETTY_FUNCTION__ , __LINE__);
     mControllerState=PlayerControllerState::Playing;
 }
 
 void PlayerController::loadCache(const float *data, size_t size) {
-    if (!openStream()){
-        mControllerState=PlayerControllerState::FailedToLoad;
-        return;
-    }
-
+    //LOGD("%s:%d\n", __PRETTY_FUNCTION__ , __LINE__);
     if (!setupCacheAudioSources(data, size)){
         mControllerState=PlayerControllerState::FailedToLoad;
         return;
     }
 
+    //LOGD("%s:%d\n", __PRETTY_FUNCTION__ , __LINE__);
     // starting the stream, after this onAudioReady method of DataCallbackResult will be called.
     Result result = mAudioStream->requestStart();
     if (result!=Result::OK){
@@ -53,6 +58,7 @@ void PlayerController::loadCache(const float *data, size_t size) {
         return;
     }
 
+    //LOGD("%s:%d\n", __PRETTY_FUNCTION__ , __LINE__);
     mControllerState=PlayerControllerState::Playing;
 }
 
@@ -62,37 +68,30 @@ void PlayerController::loadCache(const float *data, size_t size) {
  */
 void PlayerController::start(char *fileName) {
    // LOGD("PlayerController, comp= %d",strcmp(fileName,trackFilename));
-    if (paused){
-        LOGD("PlayerController, setPlaying true");
-        mTrack->setPlaying(true);
-    }
-    else{
-        LOGD("PlayerController, starting Player");
-        setAudioTrackFilename(fileName);
-        // async returns a future, we must store this future to avoid blocking. It's not sufficient
-        // to store this in a local variable as its destructor will block until PlayerController::load completes.
-        mLoadingResult =std::async(&PlayerController::load,this);
-    }
+   //LOGD("%s:%d\n", __PRETTY_FUNCTION__ , __LINE__);
+   mControllerState = PlayerControllerState::Loading;
+   setAudioTrackFilename(fileName);
+   // async returns a future, we must store this future to avoid blocking. It's not sufficient
+   // to store this in a local variable as its destructor will block until PlayerController::load completes.
+   mLoadingResult =std::async(&PlayerController::load,this);
 }
 
 void PlayerController::startCache(const float *data, size_t size) {
-    if (paused){
-        LOGD("PlayerController, setPlaying true");
-        mTrack->setPlaying(true);
-    }
-    else{
-        LOGD("PlayerController, starting Player");
-        // async returns a future, we must store this future to avoid blocking. It's not sufficient
-        // to store this in a local variable as its destructor will block until PlayerController::load completes.
-        mLoadingResult =std::async(&PlayerController::loadCache,this, data, size);
-    }
+    //LOGD("%s:%d\n", __PRETTY_FUNCTION__ , __LINE__);
+    mControllerState = PlayerControllerState::Loading;
+    // async returns a future, we must store this future to avoid blocking. It's not sufficient
+    // to store this in a local variable as its destructor will block until PlayerController::load completes.
+    mLoadingResult =std::async(&PlayerController::loadCache,this, data, size);
 }
 
 /**
  * stop the audio stream.
  */
 void PlayerController::stop() {
-    LOGD("%s:%d\n", __PRETTY_FUNCTION__ , __LINE__);
+    //LOGD("%s:%d\n", __PRETTY_FUNCTION__ , __LINE__);
+    if(mControllerState == PlayerControllerState::Ending)
+        return;
+
     while(mControllerState == PlayerControllerState::Loading) {
         usleep(1000);
     }
@@ -100,19 +99,14 @@ void PlayerController::stop() {
     if(mControllerState == PlayerControllerState::FailedToLoad)
         return;
 
-    if (mAudioStream){
-        mAudioStream->stop();
-        mAudioStream->close();
-        mAudioStream.reset();
-    }
     if(mTrack)
         mTrack->setPlaying(false);
-}
 
-void PlayerController::pause() {
-    mAudioStream->pause();
-
-    //mTrack->setPlaying(false);
+    if (mAudioStream.get()){
+        mAudioStream->stop();
+        //mAudioStream->close();
+        //mAudioStream.reset();
+    }
 }
 
 /**
@@ -125,11 +119,13 @@ void PlayerController::pause() {
 DataCallbackResult PlayerController::onAudioReady(AudioStream *oboeStream, void *audioData, int32_t numFrames) {
     auto *outputBuffer = static_cast<float *>(audioData);
     for (int i=0; i<numFrames; ++i){
-        mSongPosition = convertFramesToMillis(mCurrentFrame,mAudioStream->getSampleRate());
+        //mSongPosition = convertFramesToMillis(mCurrentFrame,mAudioStream->getSampleRate());
         mCurrentFrame++;
         mTrack->renderAudio(outputBuffer+(oboeStream->getChannelCount()*i), 1);
     }
-    mLastUpdateTime = nowUptimeMillis();
+    //mLastUpdateTime = nowUptimeMillis();
+    if(!mTrack->isPlaying())
+        mControllerState = PlayerControllerState::Ending;
     return mTrack->isPlaying() ? DataCallbackResult::Continue : DataCallbackResult::Stop;
 }
 
@@ -140,10 +136,11 @@ DataCallbackResult PlayerController::onAudioReady(AudioStream *oboeStream, void 
  */
 void PlayerController::onErrorAfterClose(AudioStream *oboeStream, Result error) {
     if (error == Result::ErrorDisconnected){
+        //LOGD("%s:%d\n", __PRETTY_FUNCTION__ , __LINE__);
         mControllerState = PlayerControllerState::Loading;
         mAudioStream->stop();
-        mAudioStream->close();
-        mAudioStream.reset();
+        //mAudioStream->close();
+        //mAudioStream.reset();
         mCurrentFrame=0;
         mSongPosition=0;
         mLastUpdateTime=0;
@@ -217,12 +214,14 @@ bool PlayerController::openStream() {
     // create an audio stream
     AudioStreamBuilder builder;
     builder.setFormat(AudioFormat::Float)
-            ->setFormatConversionAllowed(true)
+            ->setFormatConversionAllowed(false)
             ->setPerformanceMode(PerformanceMode::LowLatency)
             ->setSharingMode(SharingMode::Exclusive)
             ->setSampleRate(48000)
-            ->setSampleRateConversionQuality(SampleRateConversionQuality::Medium)
+            ->setSampleRateConversionQuality(SampleRateConversionQuality::None)
             ->setChannelCount(ChannelCount::Mono)
+            ->setChannelConversionAllowed(true)
+            ->setUsage(Usage::Game)
             ->setDataCallback(this)
             ->setErrorCallback(this);
 
@@ -262,7 +261,6 @@ bool PlayerController::setupAudioSources() {
 
     mTrack = std::make_unique<Player>(trackSource);
     mTrack->setPlaying(true);
-    mTrack->setLooping(false);
 
     return true;
 }
@@ -286,7 +284,6 @@ bool PlayerController::setupCacheAudioSources(const float *data, size_t size) {
 
     mTrack = std::make_unique<Player>(trackSource);
     mTrack->setPlaying(true);
-    mTrack->setLooping(false);
 
     return true;
 }
