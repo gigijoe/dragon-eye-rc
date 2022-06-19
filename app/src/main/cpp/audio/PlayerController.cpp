@@ -91,11 +91,11 @@ void PlayerController::stop() {
     //LOGD("%s:%d\n", __PRETTY_FUNCTION__ , __LINE__);
     if(mControllerState == PlayerControllerState::Ending)
         return;
-
+/*
     while(mControllerState == PlayerControllerState::Loading) {
         usleep(1000);
     }
-
+*/
     if(mControllerState == PlayerControllerState::FailedToLoad)
         return;
 
