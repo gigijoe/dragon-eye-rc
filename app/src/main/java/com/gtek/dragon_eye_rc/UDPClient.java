@@ -72,7 +72,7 @@ public class UDPClient implements Runnable {
         start();
     }
 
-    public String send(String hostIp, int udpPort, String msgSend) {
+    public DatagramPacket send(String hostIp, int udpPort, String msgSend) {
         InetAddress hostAddress = null;
 
         if(socket == null)
@@ -95,7 +95,7 @@ public class UDPClient implements Runnable {
             //Log.i("UDPClient", "Send packet fail !!!");
         }
 
-        return msgSend;
+        return packetSend;
     }
 
     private static byte byteOfInt(int value, int which) {
