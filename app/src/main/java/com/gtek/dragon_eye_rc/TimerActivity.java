@@ -159,7 +159,7 @@ public class TimerActivity extends AppCompatActivity {
 
                     if(millis >= 200000) // Over 200 secs, do not play voice
                         return;
-
+/*
                     float duration = (float)millis / 1000;
                     mTextViewDuration.setText(String.format("%.2f", duration));
                     //System.out.println("Result = " + String.format("%.2f", duration));
@@ -167,15 +167,24 @@ public class TimerActivity extends AppCompatActivity {
                     mResults.add(0, String.format("%.2f", duration));
                     //mListViewResults.deferNotifyDataSetChanged();
                     mListViewResultsAdapter.notifyDataSetChanged();
+*/
+                    int v0 = (int)(millis / 1000);
+                    int v1 = (int) (millis % 1000);
+                    mTextViewDuration.setText(String.format("%d", v0) + "." + String.format("%2d", (v1 / 10)));
+
+                    mResults.add(0, String.format("%d", v0) + "." + String.format("%2d", (v1 / 10)));
+                    mListViewResultsAdapter.notifyDataSetChanged();
 
                     Thread thread = new Thread(new Runnable() {
                         @Override
                         public void run() {
+                            /*
                             try {
                                 Thread.sleep(10);
                             } catch (InterruptedException e) {
                                 e.printStackTrace();
                             }
+                            */
                             //ArrayList<Integer> toneArray = new ArrayList<>();
                             ArrayList<String> toneArray = new ArrayList<>();
                             toneArray.add("r_e.raw");
@@ -197,9 +206,9 @@ public class TimerActivity extends AppCompatActivity {
                                 }
                             }
                             toneArray.add("r_point.raw");
-                            v = (int) (millis % 1000) / 10;
-                            toneArray.add(numberToAsset(v / 10));
-                            toneArray.add(numberToAsset(v % 10));
+                            v = (int) (millis % 1000);
+                            toneArray.add(numberToAsset(v / 100));
+                            toneArray.add(numberToAsset((v % 100) / 10));
 
                             if(millis < 30000) // Less than 30 seconds
                                 toneArray.add("smb_world_clear.raw");
