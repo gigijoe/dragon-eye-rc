@@ -31,7 +31,7 @@ public class DragonEyeApplication extends Application {
 
     private final AtomicBoolean isPriorityPlaying = new AtomicBoolean(false);
     ArrayList<String> mToneArray = null;
-    private final String audioAssetFolder = "48k/";
+    public static String audioAssetFolder = "48k/";
 
     synchronized public void playTone(String asset) {
         PowerManager pm = (PowerManager) getSystemService(Context.POWER_SERVICE);
@@ -328,6 +328,10 @@ public class DragonEyeApplication extends Application {
             String framesPerBurstStr = myAudioMgr.getProperty(AudioManager.PROPERTY_OUTPUT_FRAMES_PER_BUFFER);
             int defaultFramesPerBurst = Integer.parseInt(framesPerBurstStr);
             native_setDefaultStreamValues(defaultSampleRate, defaultFramesPerBurst);
+
+            if(defaultSampleRate == 44100) {
+                audioAssetFolder = "44k1/";
+            }
         }
     }
 
