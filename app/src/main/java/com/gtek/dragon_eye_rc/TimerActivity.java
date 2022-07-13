@@ -35,6 +35,7 @@ public class TimerActivity extends AppCompatActivity {
     private long mStartTime = 0;
 
     private TextView mTextViewDuration;
+    private TextView mTextViewWind;
     private TextView mTextViewTimerStatus;
     private Button mButtonA, mButtonB;
 
@@ -87,6 +88,10 @@ public class TimerActivity extends AppCompatActivity {
     }
 
     private void onButtonStart() {
+        if(mTimerState == finishState) {
+            mTimerState = idleState; // Start below
+        }
+
         if(mTimerState == idleState) {
             DragonEyeApplication.getInstance().playPriorityTone("r_go.raw");
             stopTimer();
@@ -170,9 +175,9 @@ public class TimerActivity extends AppCompatActivity {
 */
                     int v0 = (int)(millis / 1000);
                     int v1 = (int) (millis % 1000);
-                    mTextViewDuration.setText(String.format("%d", v0) + "." + String.format("%2d", (v1 / 10)));
+                    mTextViewDuration.setText(String.format("%d", v0) + "." + String.format("%02d", (v1 / 10)));
 
-                    mResults.add(0, String.format("%d", v0) + "." + String.format("%2d", (v1 / 10)));
+                    mResults.add(0, String.format("%d", v0) + "." + String.format("%02d", (v1 / 10)));
                     mListViewResultsAdapter.notifyDataSetChanged();
 
                     Thread thread = new Thread(new Runnable() {
@@ -326,6 +331,7 @@ public class TimerActivity extends AppCompatActivity {
         setContentView(R.layout.activity_timer);
 
         mTextViewDuration = (TextView) findViewById(R.id.textViewDuration);
+        mTextViewWind = (TextView) findViewById(R.id.textViewWind);
         mTextViewTimerStatus = (TextView) findViewById(R.id.textViewTimerStatus);
 
         mButtonA = (Button) findViewById(R.id.buttonA);
@@ -493,6 +499,10 @@ public class TimerActivity extends AppCompatActivity {
             }
             serNoB = serNo;
         }
+    }
+
+    void onWindStatus(float speed, int dir) {
+        mTextViewWind.setText(String.format("Wind %.2f / Dir %03d", speed, dir));
     }
 /*
     private BroadcastReceiver broadcastReceiver = new BroadcastReceiver() {

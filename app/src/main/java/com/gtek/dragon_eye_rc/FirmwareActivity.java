@@ -99,8 +99,31 @@ public class FirmwareActivity extends AppCompatActivity {
             TextView remoteVersion = (TextView) findViewById(R.id.text_remote_version);
             remoteVersion.setText(b.getFirmwareVersion());
 
-            String v = getResources().getString(R.string.version);
-            if(TextUtils.equals(b.getFirmwareVersion(), v)) {
+            //Firmware version format : v[dec].[dec].[hex]
+
+            boolean upgradeRequired = false;
+            String app_version = getResources().getString(R.string.version);
+            String base_version = b.getFirmwareVersion();
+            if(app_version.startsWith("v") == false || base_version.startsWith("v") == false) {
+                upgradeRequired = true;
+            } else {
+                String av[] = app_version.substring(1).split("\\.");
+                String bv[] = base_version.substring(1).split("\\.");
+
+                if(av.length != 3 || bv.length != 3) {
+                    upgradeRequired = true;
+                } else {
+                    if(Integer.parseInt(av[0]) > Integer.parseInt(bv[0]))
+                        upgradeRequired = true;
+                    else if(Integer.parseInt(av[1]) > Integer.parseInt(bv[1]))
+                        upgradeRequired = true;
+                    else if(Integer.parseInt(av[2], 16) > Integer.parseInt(bv[2], 16))
+                        upgradeRequired = true;
+                }
+            }
+
+            //if(TextUtils.equals(base_version, app_version)) {
+            if(upgradeRequired == false) {
                 mUpgradeStatus.setText("Latest version already ...");
             } else {
                 mUpgradeStatus.setText("Upgrade required ...");

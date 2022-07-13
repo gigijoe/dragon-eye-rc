@@ -659,7 +659,7 @@ public class MainActivity extends AppCompatActivity {
         });
 
         checkPermission();
-
+/*
         FloatingActionButton bs = findViewById(R.id.button_start);
         bs.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -711,6 +711,7 @@ public class MainActivity extends AppCompatActivity {
                 thread.start();
             }
         });
+*/
 /*
         IntentFilter filter = new IntentFilter();
         filter.addAction(WifiManager.NETWORK_STATE_CHANGED_ACTION);
@@ -828,7 +829,7 @@ public class MainActivity extends AppCompatActivity {
         //System.out.println("DNS 2 : " + stringAddress(dhcp.dns2));
 
         mWifiSsid.setText(ssid);
-        mStatusView.setText("Base Scanning ...");
+        //mStatusView.setText("Base Scanning ...");
 
         if(!mMulticastThread2.isRunning())
             mMulticastThread2.start();
@@ -841,7 +842,7 @@ public class MainActivity extends AppCompatActivity {
     @SuppressLint("SetTextI18n")
     private void onWifiDisconnected() {
         mWifiSsid.setText("WIFI Disconnected !!!");
-        mStatusView.setText("All bases off line ...");
+        //mStatusView.setText("All bases off line ...");
 
         //clearAllDragonEyeBase();
 
@@ -1087,6 +1088,20 @@ public class MainActivity extends AppCompatActivity {
                         DragonEyeApplication.getInstance().requestStatus(b);
                     }
                     // Alway request while receive multicast from base ...
+                }
+            }
+        } else if(s.startsWith("WIND:")) {
+            String baseHost[] = s.split(":");
+            if (baseHost.length >= 3) {
+                float speed = Float.parseFloat(baseHost[1]);
+                int dir = Integer.parseInt(baseHost[2]);
+                mStatusView.setText(String.format("Wind %.2f / Dir %03d", speed, dir));
+
+                Activity a = DragonEyeApplication.getInstance().getActivity();
+                if(a != null) {
+                    if (TextUtils.equals(a.getClass().getSimpleName(), "TimerActivity")) {
+                        ((TimerActivity) a).onWindStatus(speed, dir);
+                    }
                 }
             }
         }
