@@ -164,5 +164,21 @@ public class VideoActivity  extends Activity implements IVLCVout.Callback    {
         libvlc.release();
         libvlc = null;
     }
+
+    private static int serNoA = 0, serNoB = 0;
+
+    synchronized void onBaseTrigger(DragonEyeBase b, String s) {
+        char base = s.charAt(1);
+        int serNo = Integer.parseInt(s.substring(2, s.length() - 1));
+        if((base == 'A' && serNo != serNoA)) {
+            System.out.println("Play tone ...");
+            DragonEyeApplication.getInstance().playTone("smb_jump_small.raw"); // R.raw.r_a
+            serNoA = serNo;
+        } else if((base == 'B' && serNo != serNoB)) {
+            System.out.println("Play tone ...");
+            DragonEyeApplication.getInstance().playTone("smb_jump_super.raw"); // R.raw.r_b
+            serNoB = serNo;
+        }
+    }
 }
 

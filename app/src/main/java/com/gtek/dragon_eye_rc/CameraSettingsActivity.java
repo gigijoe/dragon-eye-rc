@@ -204,7 +204,7 @@ public class CameraSettingsActivity extends AppCompatActivity {
         DragonEyeBase b = DragonEyeApplication.getInstance().findBaseByAddress(addr);
         if (b != null) {
             if(TextUtils.equals(s, "#Ack")) {
-                Toast.makeText(mContext,"Update Successful", Toast.LENGTH_SHORT).show();
+                Toast.makeText(mContext,"Okay", Toast.LENGTH_SHORT).show();
             }
         }
     }

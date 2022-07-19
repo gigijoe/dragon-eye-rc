@@ -562,6 +562,8 @@ public class MainActivity extends AppCompatActivity {
                                 ((MainActivity) a).onBaseTrigger(b, s);
                             } else if (TextUtils.equals(a.getClass().getSimpleName(), "TimerActivity")) {
                                 ((TimerActivity) a).onBaseTrigger(b, s);
+                            } else if (TextUtils.equals(a.getClass().getSimpleName(), "VideoActivity")) {
+                                ((VideoActivity) a).onBaseTrigger(b, s);
                             }
                         }
                     } else {
@@ -1040,7 +1042,7 @@ public class MainActivity extends AppCompatActivity {
     void onMulticastRx(String addr, String s) {
         if (s.startsWith("BASE_A:") || s.startsWith("BASE_B:")) {
             String baseHost[] = s.split(":");
-            if (baseHost.length >= 5) {
+            if (baseHost.length >= 3) { // BASE_X:IP:FPS
                 //System.out.println(baseHost[0]);
                 try {
                     InetAddress.getByName(baseHost[1]); // Test if valid ip address
@@ -1049,10 +1051,10 @@ public class MainActivity extends AppCompatActivity {
                     e.printStackTrace();
                     return;
                 }
-
+/*
                 if(TextUtils.equals(baseHost[1], "127.0.0.1"))
                     return;
-
+*/
                 DragonEyeBase b = DragonEyeApplication.getInstance().findBaseByAddress(baseHost[1]);
                 if(b == null) { /* New base */
                     System.out.println("New base " + baseHost[0] + " " + baseHost[1]);
@@ -1069,8 +1071,10 @@ public class MainActivity extends AppCompatActivity {
                 } else { /* Base exist ... */
                     b.multicastReceived();
                     b.setFps(Integer.parseInt(baseHost[2]));
-                    b.setTemperature(Integer.parseInt(baseHost[3]));
-                    b.setGpuLoad(Integer.parseInt(baseHost[4]));
+                    if(baseHost.length >= 4)
+                        b.setTemperature(Integer.parseInt(baseHost[3]));
+                    if(baseHost.length >= 5)
+                        b.setGpuLoad(Integer.parseInt(baseHost[4]));
                     b.stopResponseTimer();
                     MainActivity.this.runOnUiThread(new Runnable() {
                         @Override
@@ -1200,6 +1204,8 @@ public class MainActivity extends AppCompatActivity {
                             ((MainActivity) a).onBaseTrigger(null, s);
                         } else if(TextUtils.equals(a.getClass().getSimpleName(), "TimerActivity")) {
                             ((TimerActivity)a).onBaseTrigger(null, s);
+                        } else if(TextUtils.equals(a.getClass().getSimpleName(), "VideoActivity")) {
+                            ((VideoActivity)a).onBaseTrigger(null, s);
                         }
                     }
 

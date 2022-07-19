@@ -100,10 +100,10 @@ public class FirmwareActivity extends AppCompatActivity {
             remoteVersion.setText(b.getFirmwareVersion());
 
             //Firmware version format : v[dec].[dec].[hex]
-
-            boolean upgradeRequired = false;
             String app_version = getResources().getString(R.string.version);
             String base_version = b.getFirmwareVersion();
+/**
+            boolean upgradeRequired = false;
             if(app_version.startsWith("v") == false || base_version.startsWith("v") == false) {
                 upgradeRequired = true;
             } else {
@@ -121,9 +121,9 @@ public class FirmwareActivity extends AppCompatActivity {
                         upgradeRequired = true;
                 }
             }
-
-            //if(TextUtils.equals(base_version, app_version)) {
-            if(upgradeRequired == false) {
+*/
+            if(TextUtils.equals(base_version, app_version)) {
+//            if(upgradeRequired == false) {
                 mUpgradeStatus.setText("Latest version already ...");
             } else {
                 mUpgradeStatus.setText("Upgrade required ...");
