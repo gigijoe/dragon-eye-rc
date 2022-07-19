@@ -31,6 +31,7 @@ public class UDPClient implements Runnable {
     private DatagramSocket socket = null;
     private Thread worker;
     private final AtomicBoolean running = new AtomicBoolean(false);
+    private final AtomicBoolean doFlush = new AtomicBoolean(false);
 
     private int localAddr = 0;
     private int networkId = -1;
@@ -70,6 +71,10 @@ public class UDPClient implements Runnable {
     public void restart() {
         stop();
         start();
+    }
+
+    public void flush() {
+        doFlush.set(true);
     }
 
     public DatagramPacket send(String hostIp, int udpPort, String msgSend) {
@@ -202,10 +207,15 @@ public class UDPClient implements Runnable {
             }
 
             try {
-                //socket.setSoTimeout(100);
+                socket.setSoTimeout(1000);
                 socket.receive(packetRcv);
                 String s = new String(packetRcv.getData(), packetRcv.getOffset(), packetRcv.getLength());
                 System.out.println("UDP receive : " + s);
+
+                if(doFlush.get()) {
+                    System.out.println("Flush out ...");
+                    continue;
+                }
 
                 PowerManager pm = (PowerManager) mContext.getSystemService(Context.POWER_SERVICE);
                 if(!pm.isInteractive())
@@ -220,6 +230,8 @@ public class UDPClient implements Runnable {
                             ((MainActivity) a).onBaseTrigger(b, s);
                         } else if (TextUtils.equals(a.getClass().getSimpleName(), "TimerActivity")) {
                             ((TimerActivity) a).onBaseTrigger(b, s);
+                        } else if(TextUtils.equals(a.getClass().getSimpleName(), "VideoActivity")) {
+                            ((VideoActivity)a).onBaseTrigger(b, s);
                         }
                     }
                 } else {
@@ -232,6 +244,9 @@ public class UDPClient implements Runnable {
                 //Log.i("Rcv", RcvMsg);
             } catch (SocketTimeoutException e) {
                 //e.printStackTrace();
+                //System.out.println("UDPClient - RX timeout");
+                if(doFlush.get())
+                    doFlush.set(false);
             } catch (IOException e) {
                 e.printStackTrace();
             }
