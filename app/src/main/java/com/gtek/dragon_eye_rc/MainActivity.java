@@ -14,13 +14,12 @@ import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.pm.PackageManager;
-import android.content.res.AssetManager;
 import android.graphics.Color;
 import android.hardware.usb.UsbDeviceConnection;
 import android.hardware.usb.UsbManager;
-import android.media.AudioManager;
 import android.net.ConnectivityManager;
 import android.net.DhcpInfo;
+import android.net.LinkProperties;
 import android.net.Network;
 import android.net.NetworkCapabilities;
 import android.net.NetworkRequest;
@@ -49,18 +48,14 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
-import androidx.annotation.RequiresApi;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 
-import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.hoho.android.usbserial.driver.UsbSerialDriver;
 import com.hoho.android.usbserial.driver.UsbSerialPort;
 import com.hoho.android.usbserial.driver.UsbSerialProber;
-
-import org.videolan.BuildConfig;
 
 import java.io.IOException;
 import java.math.BigInteger;
@@ -103,33 +98,9 @@ public class MainActivity extends AppCompatActivity {
     private UsbSerialPort mUsbSerialPort = null;
     private UsbSerialThread mUsbSerialThread = null;
 
-    private void compassCalibrationDialog(DragonEyeBase b) {
-        AlertDialog.Builder MyAlertDialog = new AlertDialog.Builder(this);
-        MyAlertDialog.setTitle("Compass Calibration");
-        MyAlertDialog.setMessage("Are you sure ?");
-        MyAlertDialog.setPositiveButton("Yes", new DialogInterface.OnClickListener() {
-            @Override
-            public void onClick(DialogInterface dialogInterface, int i) {
-                Thread thread = new Thread(new Runnable() {
-                    @Override
-                    public void run() {
-                        DragonEyeApplication.getInstance().requestCompassLock(b);
-                    }
-                });
-                thread.start();
-            }
-        });
-        MyAlertDialog.setNegativeButton("No", new DialogInterface.OnClickListener() {
-            @Override
-            public void onClick(DialogInterface dialogInterface, int i) {
-            }
-        });
-        MyAlertDialog.show();
-    }
-
     public class ListViewAdapter extends ArrayAdapter<DragonEyeBase> implements View.OnClickListener {
 
-        private ArrayList<DragonEyeBase> mBaseList;
+        //private ArrayList<DragonEyeBase> mBaseList;
         Context mContext;
 
         // View lookup cache
@@ -147,7 +118,7 @@ public class MainActivity extends AppCompatActivity {
 
         ListViewAdapter(ArrayList<DragonEyeBase> baseList, Context context) {
             super(context, R.layout.list_content, baseList);
-            mBaseList = baseList;
+            //mBaseList = baseList;
             mContext = context;
         }
 
@@ -155,8 +126,7 @@ public class MainActivity extends AppCompatActivity {
         public void onClick(View v) {
             int position=(Integer) v.getTag();
             DragonEyeApplication.getInstance().selectBaseByIndex(position);
-            Object object= getItem(position);
-            DragonEyeBase b = (DragonEyeBase)object;
+            DragonEyeBase b = getItem(position);
 
             switch (v.getId())
             {
@@ -184,6 +154,7 @@ public class MainActivity extends AppCompatActivity {
                             @Override
                             public void run() {
                                 DragonEyeApplication.getInstance().requestStart(b);
+                                b.startResponseTimer();
                                 b.trying();
                             }
                         });
@@ -194,6 +165,7 @@ public class MainActivity extends AppCompatActivity {
                             @Override
                             public void run() {
                                 DragonEyeApplication.getInstance().requestStop(b);
+                                b.startResponseTimer();
                                 b.trying();
                             }
                         });
@@ -208,6 +180,7 @@ public class MainActivity extends AppCompatActivity {
                             @Override
                             public void run() {
                                 DragonEyeApplication.getInstance().requestSystemSettings(b);
+                                b.startResponseTimer();
                             }
                         });
                         thread.start();
@@ -224,6 +197,7 @@ public class MainActivity extends AppCompatActivity {
                             @Override
                             public void run() {
                                 DragonEyeApplication.getInstance().requestCameraSettings(b);
+                                b.startResponseTimer();
                             }
                         });
                         thread.start();
@@ -258,15 +232,14 @@ public class MainActivity extends AppCompatActivity {
                 viewHolder = new ViewHolder();
                 LayoutInflater inflater = LayoutInflater.from(getContext());
                 convertView = inflater.inflate(R.layout.list_content, parent, false);
-                viewHolder.txtName = (TextView) convertView.findViewById(R.id.iv_name);
-                viewHolder.txtAddress = (TextView) convertView.findViewById(R.id.tv_ip);
-                viewHolder.txtStatus = (TextView) convertView.findViewById(R.id.tv_status);
-                //viewHolder.imgCompassCalibration = (ImageView) convertView.findViewById(R.id.iv_explore);
-                viewHolder.imgRun = (ImageView) convertView.findViewById(R.id.iv_run);
-                viewHolder.imgSystemSettings = (ImageView) convertView.findViewById(R.id.iv_system_settings);
-                viewHolder.imgCameraSettings = (ImageView) convertView.findViewById(R.id.iv_camera_settings);
-                viewHolder.imgRtspVideo = (ImageView) convertView.findViewById(R.id.iv_rtsp_video);
-                viewHolder.txtTelemetry = (TextView)  convertView.findViewById(R.id.iv_telemetry);
+                viewHolder.txtName = convertView.findViewById(R.id.iv_name);
+                viewHolder.txtAddress = convertView.findViewById(R.id.tv_ip);
+                viewHolder.txtStatus = convertView.findViewById(R.id.tv_status);
+                viewHolder.imgRun = convertView.findViewById(R.id.iv_run);
+                viewHolder.imgSystemSettings = convertView.findViewById(R.id.iv_system_settings);
+                viewHolder.imgCameraSettings = convertView.findViewById(R.id.iv_camera_settings);
+                viewHolder.imgRtspVideo = convertView.findViewById(R.id.iv_rtsp_video);
+                viewHolder.txtTelemetry = convertView.findViewById(R.id.iv_telemetry);
 
                 result=convertView;
 
@@ -415,12 +388,12 @@ public class MainActivity extends AppCompatActivity {
         private InetAddress group = null;
         private final AtomicBoolean doFlush = new AtomicBoolean(false);
 
-        private String mAddress = null;
-        private int mPort = 0;
+        private String mAddress;
+        private int mPort;
 
         public MulticastThread(String address, int port) {
             super();
-            mAddress = new String(address);
+            mAddress = address;
             mPort = port;
         }
 
@@ -485,7 +458,7 @@ public class MainActivity extends AppCompatActivity {
 
             while (running.get()) {
                 WifiInfo wifiInfo = wifiMgr.getConnectionInfo();
-                if (wifiMgr.isWifiEnabled() == false) {
+                if (!wifiMgr.isWifiEnabled()) {
                     try {
                         Thread.sleep(100);
                     } catch (InterruptedException e) {
@@ -541,9 +514,14 @@ public class MainActivity extends AppCompatActivity {
 
                         socket = new MulticastSocket(mPort);
                         socket.setReuseAddress(true);
+
+                        //NetworkInterface nif = NetworkInterface.getByName("wlan0");
+                        //socket.setNetworkInterface(nif);
+
                         //socket.bind(isa);
                         if(ni != null)
                             socket.setNetworkInterface(ni);
+
                         socket.joinGroup(group);
                         //socket.setSoTimeout(2000);
                     } catch (UnknownHostException | SocketException e) {
@@ -650,8 +628,21 @@ public class MainActivity extends AppCompatActivity {
         }
     };
 */
+    //Current Android version data
+    public static String currentVersion(){
+        double release=Double.parseDouble(Build.VERSION.RELEASE.replaceAll("(\\d+[.]\\d+)(.*)","$1"));
+        String codeName="Unsupported";//below Jelly Bean
+        if(release >= 4.1 && release < 4.4) codeName = "Jelly Bean";
+        else if(release < 5)   codeName="Kit Kat";
+        else if(release < 6)   codeName="Lollipop";
+        else if(release < 7)   codeName="Marshmallow";
+        else if(release < 8)   codeName="Nougat";
+        else if(release < 9)   codeName="Oreo";
+        else if(release < 10)  codeName="Pie";
+        else if(release >= 10) codeName="Android "+((int)release);//since API 29 no more candy code names
+        return codeName+" v"+release+", API Level: "+Build.VERSION.SDK_INT;
+    }
 
-    @RequiresApi(api = Build.VERSION_CODES.LOLLIPOP)
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -659,6 +650,8 @@ public class MainActivity extends AppCompatActivity {
 
         mContext = getApplicationContext();
         mActivity = MainActivity.this;
+
+        System.out.println(currentVersion());
 
         Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
@@ -687,59 +680,6 @@ public class MainActivity extends AppCompatActivity {
         });
 
         checkPermission();
-/*
-        FloatingActionButton bs = findViewById(R.id.button_start);
-        bs.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                if (DragonEyeApplication.getInstance().mBaseList.isEmpty())
-                    return;
-
-                Thread thread = new Thread(new Runnable() {
-                    @Override
-                    public void run() {
-                        for (DragonEyeBase b : DragonEyeApplication.getInstance().mBaseList) {
-                            DragonEyeApplication.getInstance().requestStart(b);
-                            b.trying();
-
-                            MainActivity.this.runOnUiThread(new Runnable() {
-                                @Override
-                                public void run() {
-                                    mListViewAdapter.notifyDataSetChanged();
-                                }
-                            });
-                        }
-                    }
-                });
-                thread.start();
-            }
-        });
-
-        FloatingActionButton bp = findViewById(R.id.button_pause);
-        bp.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                if (DragonEyeApplication.getInstance().mBaseList.isEmpty())
-                    return;
-                Thread thread = new Thread(new Runnable() {
-                    @Override
-                    public void run() {
-                        for (DragonEyeBase b : DragonEyeApplication.getInstance().mBaseList) {
-                            DragonEyeApplication.getInstance().requestStop(b);
-                            b.trying();
-                            MainActivity.this.runOnUiThread(new Runnable() {
-                                @Override
-                                public void run() {
-                                    mListViewAdapter.notifyDataSetChanged();
-                                }
-                            });
-                        }
-                    }
-                });
-                thread.start();
-            }
-        });
-*/
 /*
         IntentFilter filter = new IntentFilter();
         filter.addAction(WifiManager.NETWORK_STATE_CHANGED_ACTION);
@@ -781,12 +721,20 @@ public class MainActivity extends AppCompatActivity {
             public void onAvailable(@NonNull final Network network) {
                 super.onAvailable(network);
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                    connectivityManager.bindProcessToNetwork(network);
+                    NetworkCapabilities networkCapabilities = connectivityManager.getNetworkCapabilities(network);
+                    if(networkCapabilities.hasTransport(NetworkCapabilities.TRANSPORT_WIFI))
+                        connectivityManager.bindProcessToNetwork(network);
                 }
                 //connectivityManager.unregisterNetworkCallback(this);
 
                 @SuppressLint("WifiManagerLeak") final WifiManager wifiMgr = (WifiManager) getApplicationContext().getSystemService(Context.WIFI_SERVICE);
                 WifiInfo wifiInfo = wifiMgr.getConnectionInfo();
+/*
+                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
+                    NetworkCapabilities netCaps = connectivityManager.getNetworkCapabilities(network);
+                    wifiInfo = (WifiInfo) netCaps.getTransportInfo();
+                }
+*/
                 //System.out.println("wifiInfo.getNetworkId() = " + wifiInfo.getNetworkId());
                 if (wifiInfo.getSupplicantState() == SupplicantState.COMPLETED) {
                     System.out.println("Wifi SSID : " + wifiInfo.getSSID());
@@ -797,6 +745,17 @@ public class MainActivity extends AppCompatActivity {
                     intent.putExtra("wifiConnected", ssid);
                     mContext.sendBroadcast(intent);
                 }
+            }
+
+            @Override
+            public void onCapabilitiesChanged(@NonNull Network network, @NonNull NetworkCapabilities networkCapabilities) {
+                super.onCapabilitiesChanged(network, networkCapabilities);
+                //updateAvailability(networkCapabilities);
+            }
+
+            @Override
+            public void onLinkPropertiesChanged(Network network, LinkProperties linkProperties) {
+                System.out.println("The default network changed link properties: " + linkProperties);
             }
 
             @Override
@@ -836,9 +795,6 @@ public class MainActivity extends AppCompatActivity {
 
     @SuppressLint("SetTextI18n")
     private void onWifiConnected(String ssid) {
-        //if (TextUtils.equals(mWifiSsid.getText(), ssid)) { // Connection changed
-            //clearAllDragonEyeBase();
-
         if(DragonEyeApplication.getInstance().mUdpClient.isRunning())
             DragonEyeApplication.getInstance().mUdpClient.stop();
         if(mMulticastThread2.isRunning())
@@ -848,6 +804,7 @@ public class MainActivity extends AppCompatActivity {
         //}
 
         @SuppressLint("WifiManagerLeak") final WifiManager wifiMgr = (WifiManager) getApplicationContext().getSystemService(Context.WIFI_SERVICE);
+/*
         final DhcpInfo dhcp = wifiMgr.getDhcpInfo();
 
         System.out.println("IP : " + stringAddress(dhcp.ipAddress));
@@ -855,9 +812,12 @@ public class MainActivity extends AppCompatActivity {
         System.out.println("Gateway : " + stringAddress(dhcp.gateway));
         System.out.println("DNS 1 : " + stringAddress(dhcp.dns1));
         //System.out.println("DNS 2 : " + stringAddress(dhcp.dns2));
-
+*/
+        if(ssid.equals("<unknown ssid>")) {
+            WifiInfo wifiInfo = wifiMgr.getConnectionInfo();
+            ssid = wifiInfo.getSSID().replace("\"", "");
+        }
         mWifiSsid.setText(ssid);
-        //mStatusView.setText("Base Scanning ...");
 
         if(!mMulticastThread2.isRunning())
             mMulticastThread2.start();
@@ -870,7 +830,6 @@ public class MainActivity extends AppCompatActivity {
     @SuppressLint("SetTextI18n")
     private void onWifiDisconnected() {
         mWifiSsid.setText("WIFI Disconnected !!!");
-        //mStatusView.setText("All bases off line ...");
 
         //clearAllDragonEyeBase();
 
@@ -1092,6 +1051,7 @@ public class MainActivity extends AppCompatActivity {
                     DragonEyeApplication.getInstance().requestCameraSettings(b);
                     DragonEyeApplication.getInstance().requestStatus(b);
                     DragonEyeApplication.getInstance().requestFirmwareVersion(b);
+                    b.startResponseTimer();
                 } else { /* Base exist ... */
                     b.multicastReceived();
                     b.setFps(Integer.parseInt(baseHost[2]));
@@ -1114,6 +1074,7 @@ public class MainActivity extends AppCompatActivity {
                         DragonEyeApplication.getInstance().requestCameraSettings(b);
                         DragonEyeApplication.getInstance().requestFirmwareVersion(b);
                         DragonEyeApplication.getInstance().requestStatus(b);
+                        b.startResponseTimer();
                     }
                     // Alway request while receive multicast from base ...
                 }
@@ -1144,8 +1105,8 @@ public class MainActivity extends AppCompatActivity {
                 }
             } else if(intent.getAction().equals("baseMsg")) {
                 if (intent.hasExtra("baseResponseTimeout")) { // base has no response of UDP request
-                    mListViewAdapter.notifyDataSetChanged();
-                } else if(intent.hasExtra("baseStatusUpdate")) { // base status changed
+                    mListViewAdapter.notifyDataSetChanged(); // Off line, wait for multicast from base to update status ...
+                } else if(intent.hasExtra("baseMulticastTimeout")) { // base doesn't receive any multicast for over 10 seconds
                     mListViewAdapter.notifyDataSetChanged();
                 } else if (intent.hasExtra("baseTriggerTimeout")) { // Trigger timeout
                     mListViewAdapter.notifyDataSetChanged();
@@ -1352,7 +1313,8 @@ public class MainActivity extends AppCompatActivity {
     public void AboutWindow()
     {
         AlertDialog.Builder aboutWindow = new AlertDialog.Builder(this);//creates a new instance of a dialog box
-        final String website = "\t https://stevegigijoe.blogspot.com";
+        //final String website = "\t https://stevegigijoe.blogspot.com";
+        final String website = "\t https://github.com/gigijoe/dragon-eye";
         String version = getResources().getString(R.string.version);
         final String AboutDialogMessage = "\t dragon-eye-rc " + version + "\n\t All bugs made by Steve Chang \n\t Website for contact :\n";
         final TextView tx = new TextView(this);//we create a textview to store the dialog text/contents
@@ -1460,24 +1422,25 @@ public class MainActivity extends AppCompatActivity {
     }
 
     @Override
-    public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults){
-        switch (requestCode){
-            case MY_PERMISSIONS_REQUEST_CODE:{
+    public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        switch (requestCode) {
+            case MY_PERMISSIONS_REQUEST_CODE: {
                 // When request is cancelled, the results array are empty
-                if((grantResults.length > 0) &&
-                                (grantResults[0]
-                                        + grantResults[1]
-                                        + grantResults[2]
-                                        + grantResults[3]
-                                        + grantResults[4]
-                                        == PackageManager.PERMISSION_GRANTED
-                                )
-                ){
+                if ((grantResults.length > 0) &&
+                        (grantResults[0]
+                                + grantResults[1]
+                                + grantResults[2]
+                                + grantResults[3]
+                                + grantResults[4]
+                                == PackageManager.PERMISSION_GRANTED
+                        )
+                ) {
                     // Permissions are granted
                     //Toast.makeText(mContext,"Permissions granted.",Toast.LENGTH_SHORT).show();
-                }else {
+                } else {
                     // Permissions are denied
-                    Toast.makeText(mContext,"Permissions denied.",Toast.LENGTH_SHORT).show();
+                    Toast.makeText(mContext, "Permissions denied.", Toast.LENGTH_SHORT).show();
                 }
                 return;
             }

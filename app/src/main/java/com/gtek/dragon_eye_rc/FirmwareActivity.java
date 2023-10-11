@@ -161,6 +161,7 @@ public class FirmwareActivity extends AppCompatActivity {
                     public void run() {
                         DragonEyeBase b = DragonEyeApplication.getInstance().getSelectedBase();
                         DragonEyeApplication.getInstance().requestFirmwareUpgrade(b);
+                        b.startResponseTimer();
                     }
                 });
                 thread.start();
@@ -222,7 +223,6 @@ public class FirmwareActivity extends AppCompatActivity {
                     } catch (WindowManager.BadTokenException e) {
                         //use a log message
                     }
-                } else if(intent.hasExtra("baseStatusUpdate")) { // base status changed
                 }
             }
         }

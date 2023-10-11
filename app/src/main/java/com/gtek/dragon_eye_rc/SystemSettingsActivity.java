@@ -56,7 +56,7 @@ public class SystemSettingsActivity extends AppCompatActivity {
 */
         mBuilder = new AlertDialog.Builder(this)
                 .setTitle("Error !!!")
-                .setMessage("Fail to save system settings ...")
+                .setMessage("Base response timeout !!!")
                 .setCancelable(false)
                 .setPositiveButton("ok", new DialogInterface.OnClickListener() {
                     @Override

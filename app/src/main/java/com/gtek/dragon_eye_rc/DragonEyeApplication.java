@@ -162,85 +162,85 @@ public class DragonEyeApplication extends Application {
     public void requestSystemSettings(DragonEyeBase b) {
         final String payloadString = "#SystemSettings";
         mUdpClient.send(b.getAddress(), DragonEyeBase.UDP_REMOTE_PORT, payloadString);
-        b.startResponseTimer();
+        //b.startResponseTimer();
     }
 
     public void requestCameraSettings(DragonEyeBase b) {
         final String payloadString = "#CameraSettings";
         mUdpClient.send(b.getAddress(), DragonEyeBase.UDP_REMOTE_PORT, payloadString);
-        b.startResponseTimer();
+        //b.startResponseTimer();
     }
 
     public void requestFirmwareVersion(DragonEyeBase b) {
         final String payloadString = "#FirmwareVersion";
         mUdpClient.send(b.getAddress(), DragonEyeBase.UDP_REMOTE_PORT, payloadString);
-        b.startResponseTimer();
+        //b.startResponseTimer();
     }
 
     public void requestStatus(DragonEyeBase b) {
         final String payloadString = "#Status";
         mUdpClient.send(b.getAddress(), DragonEyeBase.UDP_REMOTE_PORT, payloadString);
-        b.startResponseTimer();
+        //b.startResponseTimer();
     }
 
     public void requestStart(DragonEyeBase b) {
         final String payloadString = "#Start";
         mUdpClient.send(b.getAddress(), DragonEyeBase.UDP_REMOTE_PORT, payloadString);
-        b.startResponseTimer();
+        //b.startResponseTimer();
     }
 
     public void requestStop(DragonEyeBase b) {
         final String payloadString = "#Stop";
         mUdpClient.send(b.getAddress(), DragonEyeBase.UDP_REMOTE_PORT, payloadString);
-        b.startResponseTimer();
+        //b.startResponseTimer();
     }
 
     public void requestCompassLock(DragonEyeBase b) {
         final String payloadString = "#CompassLock";
         mUdpClient.send(b.getAddress(), DragonEyeBase.UDP_REMOTE_PORT, payloadString);
-        b.startResponseTimer();
+        //b.startResponseTimer();
     }
 
     public void requestCompassUnlock(DragonEyeBase b) {
         final String payloadString = "#CompassUnlock";
         mUdpClient.send(b.getAddress(), DragonEyeBase.UDP_REMOTE_PORT, payloadString);
-        b.startResponseTimer();
+        //b.startResponseTimer();
     }
 
     public void requestCompassSaveSettings(DragonEyeBase b) {
         final String payloadString = "#CompassSaveSettings";
         mUdpClient.send(b.getAddress(), DragonEyeBase.UDP_REMOTE_PORT, payloadString);
-        b.startResponseTimer();
+        //b.startResponseTimer();
     }
 
     public void requestCompassSuspend(DragonEyeBase b) {
         final String payloadString = "#CompassSuspend";
         mUdpClient.send(b.getAddress(), DragonEyeBase.UDP_REMOTE_PORT, payloadString);
-        b.startResponseTimer();
+        //b.startResponseTimer();
     }
 
     public void requestCompassResume(DragonEyeBase b) {
         final String payloadString = "#CompassResume";
         mUdpClient.send(b.getAddress(), DragonEyeBase.UDP_REMOTE_PORT, payloadString);
-        b.startResponseTimer();
+        //b.startResponseTimer();
     }
 
     public void requestFirmwareUpgrade(DragonEyeBase b) {
         final String payloadString = "#FirmwareUpgrade";
         mUdpClient.send(b.getAddress(), DragonEyeBase.UDP_REMOTE_PORT, payloadString);
-        b.startResponseTimer();
+        //b.startResponseTimer();
     }
 
     public void requestVideoFiles(DragonEyeBase b, String cmd) {
         final String payloadString = "#VideoFiles:" + cmd;
         mUdpClient.send(b.getAddress(), DragonEyeBase.UDP_REMOTE_PORT, payloadString);
-        b.startResponseTimer();
+        //b.startResponseTimer();
     }
 
     public void requestSystemCommand(DragonEyeBase b, String cmd) {
         final String payloadString = "#SystemCommand:" + cmd;
         mUdpClient.send(b.getAddress(), DragonEyeBase.UDP_REMOTE_PORT, payloadString);
-        b.startResponseTimer();
+        //b.startResponseTimer();
     }
 
     @Override

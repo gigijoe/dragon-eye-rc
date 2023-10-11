@@ -85,6 +85,7 @@ public class NanoFileUpload extends FileUpload {
         }
 
         @Override
+        @Deprecated
         public int getContentLength() {
             return (int) contentLength();
         }

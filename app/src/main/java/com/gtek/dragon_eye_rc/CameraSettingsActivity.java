@@ -49,7 +49,7 @@ public class CameraSettingsActivity extends AppCompatActivity {
 
         mBuilder = new AlertDialog.Builder(this)
                 .setTitle("Error !!!")
-                .setMessage("Fail to save camera settings ...")
+                .setMessage("Base response timeout !!!")
                 .setCancelable(false)
                 .setPositiveButton("ok", new DialogInterface.OnClickListener() {
                     @Override

@@ -41,12 +41,12 @@ public class DragonEyeBase {
                 int count = 0;
                 while(isAlive.get()) {
                     try {
-                        Thread.sleep(6000);
+                        Thread.sleep(10000); // Wait 10 seconds ...
                         if(count == mMulticastReceiveCount) {
                             offline();
                             Intent intent = new Intent();
                             intent.setAction("baseMsg");
-                            intent.putExtra("baseStatusUpdate", 0);
+                            intent.putExtra("baseMulticastTimeout", 0);
                             mContext.sendBroadcast(intent);
                         } else
                             count = mMulticastReceiveCount;

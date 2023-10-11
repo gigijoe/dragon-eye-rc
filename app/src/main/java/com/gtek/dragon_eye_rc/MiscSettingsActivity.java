@@ -35,7 +35,7 @@ public class MiscSettingsActivity extends AppCompatActivity {
 
         mBuilder = new androidx.appcompat.app.AlertDialog.Builder(this)
                 .setTitle("Error !!!")
-                .setMessage("Fail run system settings ...")
+                .setMessage("Base response timeout !!!")
                 .setCancelable(false)
                 .setPositiveButton("ok", new DialogInterface.OnClickListener() {
                     @Override
@@ -148,6 +148,7 @@ public class MiscSettingsActivity extends AppCompatActivity {
                     public void run() {
                         DragonEyeBase b = DragonEyeApplication.getInstance().getSelectedBase();
                         DragonEyeApplication.getInstance().requestVideoFiles(b, "DeleteAll");
+                        b.startResponseTimer();
                     }
                 });
                 thread.start();

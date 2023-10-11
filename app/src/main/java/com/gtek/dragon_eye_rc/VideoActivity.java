@@ -1,6 +1,7 @@
 package com.gtek.dragon_eye_rc;
 
 import android.app.Activity;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.net.Uri;
 import android.os.Build;
@@ -19,6 +20,7 @@ import java.lang.ref.WeakReference;
 import java.util.ArrayList;
 
 import androidx.annotation.RequiresApi;
+import androidx.appcompat.app.AlertDialog;
 
 public class VideoActivity  extends Activity implements IVLCVout.Callback    {
     public final static String TAG = "VideoActivity";
@@ -28,6 +30,7 @@ public class VideoActivity  extends Activity implements IVLCVout.Callback    {
     // display surface
     private SurfaceView mSurface;
     private SurfaceHolder holder;
+    private AlertDialog.Builder mBuilder;
 
     class MyPlayerListener implements MediaPlayer.EventListener {
         //private String TAG = "PlayerListener";
@@ -46,9 +49,15 @@ public class VideoActivity  extends Activity implements IVLCVout.Callback    {
                     //Log.d(TAG, "MediaPlayerEndReached");
                     player.releasePlayer();
                     break;
-                case MediaPlayer.Event.Playing:
-                case MediaPlayer.Event.Paused:
-                case MediaPlayer.Event.Stopped:
+                case MediaPlayer.Event.Playing: Log.d(TAG, "MediaPlayer.Event.Playing");
+                    break;
+                case MediaPlayer.Event.Paused: Log.d(TAG, "MediaPlayer.Event.Paused");
+                    break;
+                case MediaPlayer.Event.Stopped: Log.d(TAG, "MediaPlayer.Event.Stopped");
+                    break;
+                case MediaPlayer.Event.EncounteredError: Log.d(TAG, "MediaPlayer.Event.EncounteredError");
+                    mBuilder.show();
+                    break;
                 default:
                     break;
             }
@@ -67,6 +76,17 @@ public class VideoActivity  extends Activity implements IVLCVout.Callback    {
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_video);
+
+        mBuilder = new AlertDialog.Builder(this)
+                .setTitle("Error !!!")
+                .setMessage("RTSP Video Error !!!")
+                .setCancelable(false)
+                .setPositiveButton("ok", new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        finish();
+                    }
+                });
 
         // Get URL
         Intent intent = getIntent();
