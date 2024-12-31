@@ -101,6 +101,8 @@ public class CameraSettingsActivity extends AppCompatActivity {
                             editor.putInt("exposure_compensation", Math.round(Float.parseFloat(keyValue[1]) * 20));
                         } else if (TextUtils.equals(keyValue[0], "exposurethreshold")) {
                             editor.putInt("exposure_threshold", Integer.parseInt(keyValue[1]));
+                        } else if (TextUtils.equals(keyValue[0], "flip-mode")) {
+                            editor.putInt("flip_mode", Integer.parseInt(keyValue[1]));
                         }
                     }
                 }
@@ -167,6 +169,10 @@ public class CameraSettingsActivity extends AppCompatActivity {
 
                 udpPayload.append("\n");
 
+                i = sp.getInt("flip_mode", 3); /* Default value 3 */
+                udpPayload.append("flip-mode=" + i);
+
+                udpPayload.append("\n");
                 //System.out.println(udpPayload.toString());
 
                 /*

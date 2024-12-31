@@ -65,5 +65,12 @@
             android:title="Exposure Threshold"
             app:min="0"
             app:showSeekBarValue="true" />
+        <SeekBarPreference
+            android:defaultValue="3"
+            android:key="flip_mode"
+            android:max="3"
+            android:title="Flip Mode"
+            app:min="1"
+            app:showSeekBarValue="true" />
     </PreferenceCategory>
 </PreferenceScreen>

@@ -17,6 +17,7 @@ import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
+import java.net.NetworkInterface;
 import java.net.SocketException;
 import java.net.SocketTimeoutException;
 import java.net.UnknownHostException;
@@ -57,9 +58,13 @@ public class UDPClient implements Runnable {
     }
 
     public void stop() {
+        System.out.println("UDPClient - Stopped ...");
+/*
         if(socket != null) {
-            socket.close(); /* Trigger exception */
+            socket.disconnect();
+            socket.close(); // Trigger exception
         }
+*/
         running.set(false);
         try {
             worker.join();
@@ -121,6 +126,7 @@ public class UDPClient implements Runnable {
         }
     }
 
+
     @Override
     public void run() {
         running.set(true);
@@ -133,6 +139,7 @@ public class UDPClient implements Runnable {
         @SuppressLint("WifiManagerLeak") final WifiManager wifiManager = (WifiManager) mContext.getSystemService(Context.WIFI_SERVICE);
 
         while (running.get()) {
+/*
             WifiInfo wifiInfo = wifiManager.getConnectionInfo();
             if(wifiManager.isWifiEnabled() == false) {
                 try {
@@ -162,11 +169,23 @@ public class UDPClient implements Runnable {
                 continue;
             }
 
-            int addr = wifiManager.getDhcpInfo().ipAddress;
-            if(addr != localAddr || networkId != wifiInfo.getNetworkId()) {
+            if (DragonEyeApplication.getInstance().WifiIpAddress() == 0 ||
+                    DragonEyeApplication.getInstance().WifiNetworkId() == -1) {
+                try {
+                    Thread.sleep(100);
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+                continue;
+            }
+*/
+            //int addr = wifiManager.getDhcpInfo().ipAddress;
+            int addr = DragonEyeApplication.getInstance().WifiIpAddress();
+            //if(addr != localAddr || networkId != wifiInfo.getNetworkId()) {
+            if (localAddr != addr || networkId != DragonEyeApplication.getInstance().WifiNetworkId()) {
                 localAddr = addr;
-                networkId = wifiInfo.getNetworkId();
-
+                networkId = DragonEyeApplication.getInstance().WifiNetworkId();
+/*
                 ByteBuffer tmp = ByteBuffer.allocate(4);
                 tmp.putInt(addr);
                 InetAddress localInetAddress = null;
@@ -177,20 +196,28 @@ public class UDPClient implements Runnable {
                 } catch (UnknownHostException e) {
                     e.printStackTrace();
                 }
-
-                System.out.println("UDPClient - Wifi SSID : " + wifiInfo.getSSID());
-                System.out.println("Socket address " + localInetAddress);
-
-                if(socket != null) {
-                    socket.close();
-                    socket = null;
-                }
-
+*/
                 try {
+                    InetAddress localInetAddress = intToInet(addr);
+
+                    NetworkInterface ni = NetworkInterface.getByInetAddress(localInetAddress);
+                    if(ni != null)
+                        System.out.println("UDPClient - Wifi interface : " + ni.getDisplayName() + ", address :" + localInetAddress);
+                    else
+                        System.out.println("UDPClient - NetworkInterface.getByInetAddress " + localInetAddress + " fail !!!");
+
+                    //System.out.println("UDPClient - Wifi SSID : " + wifiInfo.getSSID());
+                    System.out.println("UDPClient - Socket address " + localInetAddress);
+
+                    if(socket != null) {
+                        socket.close();
+                        socket = null;
+                    }
+
                     socket = new DatagramSocket();
                     socket.setReuseAddress(true);
                     //socket.bind(isa);
-                    //socket.setSoTimeout(3000);//设置超时为3s
+                    socket.setSoTimeout(200);//设置超时为1s
                 } catch (SocketException e) {
                     e.printStackTrace();
                 }
@@ -207,19 +234,22 @@ public class UDPClient implements Runnable {
             }
 
             try {
-                socket.setSoTimeout(1000);
+                //socket.setSoTimeout(20);
                 socket.receive(packetRcv);
                 String s = new String(packetRcv.getData(), packetRcv.getOffset(), packetRcv.getLength());
                 System.out.println("UDP receive : " + s);
 
                 if(doFlush.get()) {
                     System.out.println("Flush out ...");
+                    doFlush.set(false);
                     continue;
                 }
 
                 PowerManager pm = (PowerManager) mContext.getSystemService(Context.POWER_SERVICE);
-                if(!pm.isInteractive())
+                if(!pm.isInteractive()) { // Is screen on ?
+                    System.out.println("Screen off. Flush out ...");
                     continue;
+                }
 
                 Activity a = DragonEyeApplication.getInstance().getActivity();
                 if (s.charAt(0) == '<' && s.charAt(s.length() - 1) == '>') {
@@ -228,8 +258,10 @@ public class UDPClient implements Runnable {
                         //if (a != null) { /* Not necessary a dragon-eye base */
                         if (TextUtils.equals(a.getClass().getSimpleName(), "MainActivity")) {
                             ((MainActivity) a).onBaseTrigger(b, s);
-                        } else if (TextUtils.equals(a.getClass().getSimpleName(), "TimerActivity")) {
-                            ((TimerActivity) a).onBaseTrigger(b, s);
+                        } else if (TextUtils.equals(a.getClass().getSimpleName(), "F3fTimerActivity")) {
+                            ((F3fTimerActivity) a).onBaseTrigger(b, s);
+                        } else if (TextUtils.equals(a.getClass().getSimpleName(), "F3bTimerActivity")) {
+                            ((F3bTimerActivity) a).onBaseTrigger(b, s);
                         } else if(TextUtils.equals(a.getClass().getSimpleName(), "VideoActivity")) {
                             ((VideoActivity)a).onBaseTrigger(b, s);
                         }
@@ -245,14 +277,15 @@ public class UDPClient implements Runnable {
             } catch (SocketTimeoutException e) {
                 //e.printStackTrace();
                 //System.out.println("UDPClient - RX timeout");
-                if(doFlush.get())
-                    doFlush.set(false);
+                //if(doFlush.get())
+                //    doFlush.set(false);
             } catch (IOException e) {
                 e.printStackTrace();
             }
         }
 
         if(socket != null) {
+            socket.disconnect();
             socket.close();
             socket = null;
         }

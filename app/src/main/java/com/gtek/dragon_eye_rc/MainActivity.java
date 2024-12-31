@@ -19,6 +19,7 @@ import android.hardware.usb.UsbDeviceConnection;
 import android.hardware.usb.UsbManager;
 import android.net.ConnectivityManager;
 import android.net.DhcpInfo;
+import android.net.LinkAddress;
 import android.net.LinkProperties;
 import android.net.Network;
 import android.net.NetworkCapabilities;
@@ -38,6 +39,7 @@ import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.WindowManager;
 import android.view.animation.Animation;
 import android.view.animation.AnimationUtils;
 import android.widget.AdapterView;
@@ -60,6 +62,7 @@ import com.hoho.android.usbserial.driver.UsbSerialProber;
 import java.io.IOException;
 import java.math.BigInteger;
 import java.net.DatagramPacket;
+import java.net.Inet4Address;
 import java.net.InetAddress;
 import java.net.MulticastSocket;
 import java.net.NetworkInterface;
@@ -165,6 +168,16 @@ public class MainActivity extends AppCompatActivity {
                             @Override
                             public void run() {
                                 DragonEyeApplication.getInstance().requestStop(b);
+                                b.startResponseTimer();
+                                b.trying();
+                            }
+                        });
+                        thread.start();
+                    } else {
+                        Thread thread = new Thread(new Runnable() {
+                            @Override
+                            public void run() {
+                                DragonEyeApplication.getInstance().requestStatus(b);
                                 b.startResponseTimer();
                                 b.trying();
                             }
@@ -347,19 +360,8 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    public static String stringAddress(int ipAddress) {
-        ipAddress = (ByteOrder.nativeOrder().equals(ByteOrder.LITTLE_ENDIAN)) ?
-                Integer.reverseBytes(ipAddress) : ipAddress;
-        byte[] ipAddressByte = BigInteger.valueOf(ipAddress).toByteArray();
-        try {
-            InetAddress myAddr = InetAddress.getByAddress(ipAddressByte);
-            return myAddr.getHostAddress();
-        } catch (UnknownHostException e) {
-            // TODO Auto-generated catch block
-            Log.e("Wifi : ", "Error getting IP address ", e);
-        }
-        return "null";
-    }
+// Remember to stop monitoring when no longer needed
+// wifiMonitor.stopMonitoring();
 
     private static byte byteOfInt(int value, int which) {
         int shift = which * 8;
@@ -413,10 +415,14 @@ public class MainActivity extends AppCompatActivity {
         }
 
         public void stop() {
+            System.out.println("multicastThread - Stopped ...");
+/*
             if(socket != null) {
-                socket.close(); /* Trigger exception */
+                socket.disconnect();
+                socket.close(); // Trigger exception
                 socket = null;
             }
+*/
             running.set(false);
             try {
                 worker.join();
@@ -457,6 +463,7 @@ public class MainActivity extends AppCompatActivity {
             packet = new DatagramPacket(buf, buf.length);
 
             while (running.get()) {
+/*
                 WifiInfo wifiInfo = wifiMgr.getConnectionInfo();
                 if (!wifiMgr.isWifiEnabled()) {
                     try {
@@ -486,10 +493,23 @@ public class MainActivity extends AppCompatActivity {
                     continue;
                 }
 
-                int addr = wifiMgr.getDhcpInfo().ipAddress;
-                if (localAddr != addr || networkId != wifiInfo.getNetworkId()) {
+                if (DragonEyeApplication.getInstance().WifiIpAddress() == 0 ||
+                        DragonEyeApplication.getInstance().WifiNetworkId() == -1) {
+                    try {
+                        Thread.sleep(100);
+                    } catch (InterruptedException e) {
+                        e.printStackTrace();
+                    }
+                    continue;
+                }
+*/
+                //int addr = wifiMgr.getDhcpInfo().ipAddress;
+                int addr = DragonEyeApplication.getInstance().WifiIpAddress();
+                //if (localAddr != addr || networkId != wifiInfo.getNetworkId()) {
+
+                if (localAddr != addr || networkId != DragonEyeApplication.getInstance().WifiNetworkId()) {
                     localAddr = addr;
-                    networkId = wifiInfo.getNetworkId();
+                    networkId = DragonEyeApplication.getInstance().WifiNetworkId();
 
                     try {
                         InetAddress localInetAddress = intToInet(addr);
@@ -499,13 +519,8 @@ public class MainActivity extends AppCompatActivity {
                             System.out.println("multicastThread - Wifi interface : " + ni.getDisplayName() + ", address :" + localInetAddress);
                         else
                             System.out.println("multicastThread - NetworkInterface.getByInetAddress " + localInetAddress + " fail !!!");
-/*
-                        Enumeration<NetworkInterface> nis = NetworkInterface.getNetworkInterfaces();
-                        while (nis.hasMoreElements())
-                            System.out.println(nis.nextElement());
-*/
-                        System.out.println("multicastThread - Wifi SSID : " + wifiInfo.getSSID());
-                        System.out.println("multicastThread - Socket address " + localInetAddress);
+
+                        //System.out.println("multicastThread - Socket address " + localInetAddress);
 
                         if (socket != null) {
                             socket.close();
@@ -514,7 +529,16 @@ public class MainActivity extends AppCompatActivity {
 
                         socket = new MulticastSocket(mPort);
                         socket.setReuseAddress(true);
-
+/*
+                        ConnectivityManager connectivityManager = (ConnectivityManager) getApplicationContext().getSystemService(Context.CONNECTIVITY_SERVICE);
+                        Network[] networks = connectivityManager.getAllNetworks();
+                        for (Network network : networks) {
+                            NetworkCapabilities capabilities = connectivityManager.getNetworkCapabilities(network);
+                            if (capabilities != null && capabilities.hasTransport(NetworkCapabilities.TRANSPORT_WIFI)) {
+                                network.bindSocket(socket);
+                            }
+                        }
+ */
                         //NetworkInterface nif = NetworkInterface.getByName("wlan0");
                         //socket.setNetworkInterface(nif);
 
@@ -523,7 +547,7 @@ public class MainActivity extends AppCompatActivity {
                             socket.setNetworkInterface(ni);
 
                         socket.joinGroup(group);
-                        //socket.setSoTimeout(2000);
+                        socket.setSoTimeout(200);
                     } catch (UnknownHostException | SocketException e) {
                         e.printStackTrace();
                     } catch (IOException e) {
@@ -542,19 +566,22 @@ public class MainActivity extends AppCompatActivity {
                 }
 
                 try {
-                    socket.setSoTimeout(1000);
+                    //socket.setSoTimeout(20);
                     socket.receive(packet);
                     String s = new String(packet.getData(), packet.getOffset(), packet.getLength());
                     System.out.println("Multicast receive : " + s);
 
                     if(doFlush.get()) {
                         System.out.println("Flush out ...");
+                        doFlush.set(false);
                         continue;
                     }
 
                     PowerManager pm = (PowerManager) mContext.getSystemService(Context.POWER_SERVICE);
-                    if(!pm.isInteractive())
+                    if(!pm.isInteractive()) {
+                        System.out.println("Screen off. Flush out ...");
                         continue;
+                    }
 
                     Activity a = DragonEyeApplication.getInstance().getActivity();
                     if (s.charAt(0) == '<' && s.charAt(s.length() - 1) == '>') {
@@ -564,8 +591,10 @@ public class MainActivity extends AppCompatActivity {
                             if (TextUtils.equals(a.getClass().getSimpleName(), "MainActivity")) {
                                 //MainActivity.this.onBaseTrigger(b, s);
                                 ((MainActivity) a).onBaseTrigger(b, s);
-                            } else if (TextUtils.equals(a.getClass().getSimpleName(), "TimerActivity")) {
-                                ((TimerActivity) a).onBaseTrigger(b, s);
+                            } else if (TextUtils.equals(a.getClass().getSimpleName(), "F3fTimerActivity")) {
+                                ((F3fTimerActivity) a).onBaseTrigger(b, s);
+                            } else if (TextUtils.equals(a.getClass().getSimpleName(), "F3bTimerActivity")) {
+                                ((F3bTimerActivity) a).onBaseTrigger(b, s);
                             } else if (TextUtils.equals(a.getClass().getSimpleName(), "VideoActivity")) {
                                 ((VideoActivity) a).onBaseTrigger(b, s);
                             }
@@ -576,8 +605,8 @@ public class MainActivity extends AppCompatActivity {
                 } catch (SocketTimeoutException e) {
                     //e.printStackTrace();
                     //System.out.println("multicastThread - RX timeout");
-                    if(doFlush.get())
-                        doFlush.set(false);
+                    //if(doFlush.get())
+                    //    doFlush.set(false);
                 } catch (IOException e) {
                     e.printStackTrace();
                 }
@@ -586,6 +615,7 @@ public class MainActivity extends AppCompatActivity {
             if(socket != null) {
                 try {
                     socket.leaveGroup(group);
+                    socket.disconnect();
                     socket.close();
                 } catch (IOException e) {
                     e.printStackTrace();
@@ -604,30 +634,6 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    private void updateWifiStatus() {
-    }
-/*
-    BroadcastReceiver networkReceiver = new BroadcastReceiver() {
-        @Override
-        public void onReceive(Context context, Intent intent) {
-            if (checkWifiConnect()) {
-                //Log.d(TAG, "wifi has connected");
-                // TODO
-            }
-        }
-
-        private boolean checkWifiConnect() {
-            ConnectivityManager manager = (ConnectivityManager) mContext.getSystemService(Context.CONNECTIVITY_SERVICE);
-            NetworkInfo networkInfo = manager.getActiveNetworkInfo();
-            if (networkInfo != null
-                    && networkInfo.getType() == ConnectivityManager.TYPE_WIFI
-                    && networkInfo.isConnected()) {
-                return true;
-            }
-            return false;
-        }
-    };
-*/
     //Current Android version data
     public static String currentVersion(){
         double release=Double.parseDouble(Build.VERSION.RELEASE.replaceAll("(\\d+[.]\\d+)(.*)","$1"));
@@ -643,10 +649,33 @@ public class MainActivity extends AppCompatActivity {
         return codeName+" v"+release+", API Level: "+Build.VERSION.SDK_INT;
     }
 
+    private int inet4AddressToInt(Inet4Address inet4Address) {
+        byte[] addressBytes = inet4Address.getAddress();
+        return (addressBytes[3] & 0xFF) << 24 |
+                (addressBytes[2] & 0xFF) << 16 |
+                (addressBytes[1] & 0xFF) << 8  |
+                (addressBytes[0] & 0xFF);
+    }
+
+    private String intToString(int ipAddress) {
+        ipAddress = (ByteOrder.nativeOrder().equals(ByteOrder.LITTLE_ENDIAN)) ?
+                Integer.reverseBytes(ipAddress) : ipAddress;
+        byte[] ipAddressByte = BigInteger.valueOf(ipAddress).toByteArray();
+        try {
+            InetAddress myAddr = InetAddress.getByAddress(ipAddressByte);
+            return myAddr.getHostAddress();
+        } catch (UnknownHostException e) {
+            // TODO Auto-generated catch block
+            Log.e("Wifi : ", "Error getting IP address ", e);
+        }
+        return "null";
+    }
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+        getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
 
         mContext = getApplicationContext();
         mActivity = MainActivity.this;
@@ -666,8 +695,6 @@ public class MainActivity extends AppCompatActivity {
 
         System.out.println("android.hardware.audio.pro = " + hasProFeature);
 
-        //DragonEyeApplication.getInstance().mTonePlayer = new TonePlayer(mContext);
-
         mListView = (ListView) findViewById(R.id.lv);
         mListViewAdapter = new ListViewAdapter(DragonEyeApplication.getInstance().mBaseList, getApplicationContext());
         mListView.setAdapter(mListViewAdapter);
@@ -680,14 +707,7 @@ public class MainActivity extends AppCompatActivity {
         });
 
         checkPermission();
-/*
-        IntentFilter filter = new IntentFilter();
-        filter.addAction(WifiManager.NETWORK_STATE_CHANGED_ACTION);
-        filter.addAction(WifiManager.WIFI_STATE_CHANGED_ACTION);
-        filter.addAction(ConnectivityManager.CONNECTIVITY_ACTION);
-        registerReceiver(networkReceiver, filter);
-        //registerReceiver(networkReceiver, new IntentFilter(ConnectivityManager.CONNECTIVITY_ACTION));
-*/
+
         registerReceiver(broadcastReceiver, new IntentFilter("udpMsg"));
         registerReceiver(broadcastReceiver, new IntentFilter("baseMsg"));
         registerReceiver(broadcastReceiver, new IntentFilter("wifiMsg"));
@@ -705,67 +725,69 @@ public class MainActivity extends AppCompatActivity {
         highPerfWifiLock.setReferenceCounted(false);
         highPerfWifiLock.acquire();
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            lowLatencyWifiLock = wifiMgr.createWifiLock(WifiManager.WIFI_MODE_FULL_LOW_LATENCY, "Low Latency Lock");
-            lowLatencyWifiLock.setReferenceCounted(false);
-            lowLatencyWifiLock.acquire();
-        }
+        lowLatencyWifiLock = wifiMgr.createWifiLock(WifiManager.WIFI_MODE_FULL_LOW_LATENCY, "Low Latency Lock");
+        lowLatencyWifiLock.setReferenceCounted(false);
+        lowLatencyWifiLock.acquire();
 
-        NetworkRequest.Builder req = new NetworkRequest.Builder();
-        req.addTransportType(NetworkCapabilities.TRANSPORT_WIFI);
-        req.removeCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET); // No internet
+        NetworkRequest.Builder requestBuilder = new NetworkRequest.Builder();
+        requestBuilder.addTransportType(NetworkCapabilities.TRANSPORT_WIFI);
+        requestBuilder.removeCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET); // No internet
 
-        ConnectivityManager connectivityManager = (ConnectivityManager) mContext.getSystemService(Context.CONNECTIVITY_SERVICE);
-        connectivityManager.requestNetwork(req.build(), new ConnectivityManager.NetworkCallback() {
+        ConnectivityManager cm = (ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE);
+
+        cm.requestNetwork(requestBuilder.build(), new ConnectivityManager.NetworkCallback(ConnectivityManager.NetworkCallback.FLAG_INCLUDE_LOCATION_INFO) {
             @Override
-            public void onAvailable(@NonNull final Network network) {
+            public void onAvailable(Network network) {
                 super.onAvailable(network);
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                    NetworkCapabilities networkCapabilities = connectivityManager.getNetworkCapabilities(network);
-                    if(networkCapabilities.hasTransport(NetworkCapabilities.TRANSPORT_WIFI))
-                        connectivityManager.bindProcessToNetwork(network);
-                }
-                //connectivityManager.unregisterNetworkCallback(this);
 
-                @SuppressLint("WifiManagerLeak") final WifiManager wifiMgr = (WifiManager) getApplicationContext().getSystemService(Context.WIFI_SERVICE);
-                WifiInfo wifiInfo = wifiMgr.getConnectionInfo();
-/*
-                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
-                    NetworkCapabilities netCaps = connectivityManager.getNetworkCapabilities(network);
-                    wifiInfo = (WifiInfo) netCaps.getTransportInfo();
-                }
-*/
-                //System.out.println("wifiInfo.getNetworkId() = " + wifiInfo.getNetworkId());
-                if (wifiInfo.getSupplicantState() == SupplicantState.COMPLETED) {
-                    System.out.println("Wifi SSID : " + wifiInfo.getSSID());
-                    String ssid = wifiInfo.getSSID().replace("\"", "");
+                cm.bindProcessToNetwork(network);
 
-                    Intent intent = new Intent(); /* Broadcast to as UDP message ... */
-                    intent.setAction("wifiMsg");
-                    intent.putExtra("wifiConnected", ssid);
-                    mContext.sendBroadcast(intent);
+                System.out.println("Wifi connected");
+                String ssid = "";
+                LinkProperties linkProperties = cm.getLinkProperties(network);
+                if (linkProperties != null) {
+                    for (LinkAddress linkAddress : linkProperties.getLinkAddresses()) {
+                        if (linkAddress.getAddress() instanceof Inet4Address) {
+                            int addr = inet4AddressToInt((Inet4Address) linkAddress.getAddress());
+                            DragonEyeApplication.getInstance().WifiIpAddress(addr);
+                            System.out.println("Wifi IP Address : " + intToString(addr));
+                            break;
+                        }
+                    }
                 }
             }
 
             @Override
             public void onCapabilitiesChanged(@NonNull Network network, @NonNull NetworkCapabilities networkCapabilities) {
                 super.onCapabilitiesChanged(network, networkCapabilities);
-                //updateAvailability(networkCapabilities);
-            }
+                WifiInfo wifiInfo = (WifiInfo) networkCapabilities.getTransportInfo();
+                if (wifiInfo != null) {
+                    System.out.println("Wifi SSID : " + wifiInfo.getSSID());
+                    //String ssid = wifiInfo.getSSID().replace("\"", "").replace("<", "").replace(">", ""));
+                    String ssid = wifiInfo.getSSID().replace("\"", ""); // Remove quotes if necessary
 
-            @Override
-            public void onLinkPropertiesChanged(Network network, LinkProperties linkProperties) {
-                System.out.println("The default network changed link properties: " + linkProperties);
+                    int id = wifiInfo.getNetworkId();
+                    DragonEyeApplication.getInstance().WifiNetworkId(id);
+
+                    Intent intent = new Intent(); /* Broadcast to as UDP message ... */
+                    intent.setAction("wifiMsg");
+                    intent.putExtra("wifiConnected", ssid);
+                    sendBroadcast(intent);
+                }
             }
 
             @Override
             public void onLost(Network network) {
+                super.onLost(network);
                 System.out.println("Wifi Disconnected ...");
+
+                DragonEyeApplication.getInstance().WifiIpAddress(0);
+                DragonEyeApplication.getInstance().WifiNetworkId(-1);
 
                 Intent intent = new Intent(); /* Broadcast to as UDP message ... */
                 intent.setAction("wifiMsg");
                 intent.putExtra("wifiDisconnected", "");
-                mContext.sendBroadcast(intent);
+                sendBroadcast(intent);
             }
         });
 
@@ -795,28 +817,14 @@ public class MainActivity extends AppCompatActivity {
 
     @SuppressLint("SetTextI18n")
     private void onWifiConnected(String ssid) {
+/*
         if(DragonEyeApplication.getInstance().mUdpClient.isRunning())
             DragonEyeApplication.getInstance().mUdpClient.stop();
         if(mMulticastThread2.isRunning())
             mMulticastThread2.stop();
         if(mMulticastThread3.isRunning())
             mMulticastThread3.stop();
-        //}
-
-        @SuppressLint("WifiManagerLeak") final WifiManager wifiMgr = (WifiManager) getApplicationContext().getSystemService(Context.WIFI_SERVICE);
-/*
-        final DhcpInfo dhcp = wifiMgr.getDhcpInfo();
-
-        System.out.println("IP : " + stringAddress(dhcp.ipAddress));
-        //System.out.println("Netmask : " + stringAddress(dhcp.netmask));
-        System.out.println("Gateway : " + stringAddress(dhcp.gateway));
-        System.out.println("DNS 1 : " + stringAddress(dhcp.dns1));
-        //System.out.println("DNS 2 : " + stringAddress(dhcp.dns2));
 */
-        if(ssid.equals("<unknown ssid>")) {
-            WifiInfo wifiInfo = wifiMgr.getConnectionInfo();
-            ssid = wifiInfo.getSSID().replace("\"", "");
-        }
         mWifiSsid.setText(ssid);
 
         if(!mMulticastThread2.isRunning())
@@ -861,6 +869,50 @@ public class MainActivity extends AppCompatActivity {
     protected void onPostResume() {
         System.out.println("onPostResume()");
         super.onPostResume();
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            ConnectivityManager connectivityManager = (ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE);
+            if (connectivityManager != null) {
+                NetworkRequest networkRequest = new NetworkRequest.Builder()
+                        .addTransportType(NetworkCapabilities.TRANSPORT_WIFI)
+                        .build();
+                connectivityManager.registerNetworkCallback(networkRequest, new ConnectivityManager.NetworkCallback(ConnectivityManager.NetworkCallback.FLAG_INCLUDE_LOCATION_INFO) {
+                    @Override
+                    public void onAvailable(@NonNull Network network) {
+                        NetworkCapabilities networkCapabilities = connectivityManager.getNetworkCapabilities(network);
+                        if (networkCapabilities != null && networkCapabilities.hasTransport(NetworkCapabilities.TRANSPORT_WIFI)) {
+                            WifiManager wifiManager = (WifiManager) getApplicationContext().getSystemService(Context.WIFI_SERVICE);
+                            if (wifiManager != null) {
+                                WifiInfo wifiInfo = wifiManager.getConnectionInfo();
+                                String ssid = wifiInfo.getSSID();
+                                if (ssid != null && ssid.startsWith("\"") && ssid.endsWith("\"")) {
+                                    ssid = ssid.substring(1, ssid.length() - 1);
+                                }
+
+                                Intent intent = new Intent(); // Broadcast to as UDP message ...
+                                intent.setAction("wifiMsg");
+                                intent.putExtra("wifiConnected", ssid);
+                                sendBroadcast(intent);
+                            }
+                        }
+                    }
+                });
+            }
+        } else {
+            WifiManager wifiManager = (WifiManager) getApplicationContext().getSystemService(Context.WIFI_SERVICE);
+            if (wifiManager != null) {
+                WifiInfo wifiInfo = wifiManager.getConnectionInfo();
+                String ssid = wifiInfo.getSSID();
+                if (ssid != null && ssid.startsWith("\"") && ssid.endsWith("\"")) {
+                    ssid = ssid.substring(1, ssid.length() - 1);
+                }
+
+                Intent intent = new Intent(); // Broadcast to as UDP message ...
+                intent.setAction("wifiMsg");
+                intent.putExtra("wifiConnected", ssid);
+                sendBroadcast(intent);
+            }
+        }
 
         if(mUsbSerialPort != null && mUsbSerialPort.isOpen()) {
             if (!mUsbSerialThread.isRunning())
@@ -1068,6 +1120,7 @@ public class MainActivity extends AppCompatActivity {
                     });
 
                     if(b.getStatus() == DragonEyeBase.Status.OFFLINE ||
+                            b.getStatus() == DragonEyeBase.Status.TRYING ||
                             b.getStatus() == DragonEyeBase.Status.ONLINE) {
                         b.online();
                         DragonEyeApplication.getInstance().requestSystemSettings(b);
@@ -1088,8 +1141,10 @@ public class MainActivity extends AppCompatActivity {
 
                 Activity a = DragonEyeApplication.getInstance().getActivity();
                 if(a != null) {
-                    if (TextUtils.equals(a.getClass().getSimpleName(), "TimerActivity")) {
-                        ((TimerActivity) a).onWindStatus(speed, dir);
+                    if (TextUtils.equals(a.getClass().getSimpleName(), "F3fTimerActivity")) {
+                        ((F3fTimerActivity) a).onWindStatus(speed, dir);
+                    } else if (TextUtils.equals(a.getClass().getSimpleName(), "F3bTimerActivity")) {
+                        ((F3bTimerActivity) a).onWindStatus(speed, dir);
                     }
                 }
             }
@@ -1187,8 +1242,10 @@ public class MainActivity extends AppCompatActivity {
                     if (s.charAt(0) == '<' && s.charAt(s.length() - 1) == '>') {
                         if(TextUtils.equals(a.getClass().getSimpleName(), "MainActivity")) {
                             ((MainActivity) a).onBaseTrigger(null, s);
-                        } else if(TextUtils.equals(a.getClass().getSimpleName(), "TimerActivity")) {
-                            ((TimerActivity)a).onBaseTrigger(null, s);
+                        } else if(TextUtils.equals(a.getClass().getSimpleName(), "F3fTimerActivity")) {
+                            ((F3fTimerActivity)a).onBaseTrigger(null, s);
+                        } else if(TextUtils.equals(a.getClass().getSimpleName(), "F3bTimerActivity")) {
+                            ((F3bTimerActivity)a).onBaseTrigger(null, s);
                         } else if(TextUtils.equals(a.getClass().getSimpleName(), "VideoActivity")) {
                             ((VideoActivity)a).onBaseTrigger(null, s);
                         }
@@ -1226,7 +1283,7 @@ public class MainActivity extends AppCompatActivity {
         UsbDeviceConnection usbConnection = usbManager.openDevice(driver.getDevice());
 
         if(usbConnection == null && permissionGranted == null && !usbManager.hasPermission(driver.getDevice())) {
-            PendingIntent usbPermissionIntent = PendingIntent.getBroadcast(getApplicationContext(), 0, new Intent(INTENT_ACTION_GRANT_USB), 0);
+            PendingIntent usbPermissionIntent = PendingIntent.getBroadcast(getApplicationContext(), 0, new Intent(INTENT_ACTION_GRANT_USB), PendingIntent.FLAG_IMMUTABLE);
             usbManager.requestPermission(driver.getDevice(), usbPermissionIntent);
             // USB request permission
             return;
@@ -1342,10 +1399,14 @@ public class MainActivity extends AppCompatActivity {
     @Override
     public boolean onOptionsItemSelected(@NonNull MenuItem item) {
         switch(item.getItemId()) {
-            case R.id.item_f3f_timer:
-                Intent intent = new Intent(getApplicationContext(), TimerActivity.class);
+            case R.id.item_f3f_timer: {
+                Intent intent = new Intent(getApplicationContext(), F3fTimerActivity.class);
                 startActivity(intent);
-                break;
+                } break;
+            case R.id.item_f3b_timer: {
+                Intent intent = new Intent(getApplicationContext(), F3bTimerActivity.class);
+                startActivity(intent);
+                } break;
             case R.id.item_restart:
                 clearAllDragonEyeBase();
 
@@ -1365,17 +1426,19 @@ public class MainActivity extends AppCompatActivity {
 
     protected void checkPermission(){
         if(ContextCompat.checkSelfPermission(mActivity, Manifest.permission.INTERNET) != PackageManager.PERMISSION_GRANTED
-                ||  ContextCompat.checkSelfPermission(mActivity,Manifest.permission.ACCESS_WIFI_STATE) != PackageManager.PERMISSION_GRANTED
-                ||  ContextCompat.checkSelfPermission(mActivity,Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED
-                ||  ContextCompat.checkSelfPermission(mActivity, Manifest.permission.READ_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED
-                ||  ContextCompat.checkSelfPermission(mActivity, Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
+                || ContextCompat.checkSelfPermission(mActivity,Manifest.permission.ACCESS_WIFI_STATE) != PackageManager.PERMISSION_GRANTED
+                || ContextCompat.checkSelfPermission(mActivity,Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED
+                //|| ContextCompat.checkSelfPermission(mActivity,Manifest.permission.READ_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED
+                //|| ContextCompat.checkSelfPermission(mActivity,Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED
+                ) {
 
             // Do something, when permissions not granted
             if(ActivityCompat.shouldShowRequestPermissionRationale(mActivity,Manifest.permission.INTERNET)
                     || ActivityCompat.shouldShowRequestPermissionRationale(mActivity,Manifest.permission.ACCESS_WIFI_STATE)
                     || ActivityCompat.shouldShowRequestPermissionRationale(mActivity,Manifest.permission.ACCESS_FINE_LOCATION)
-                    || ActivityCompat.shouldShowRequestPermissionRationale(mActivity, Manifest.permission.READ_EXTERNAL_STORAGE)
-                    || ActivityCompat.shouldShowRequestPermissionRationale(mActivity, Manifest.permission.WRITE_EXTERNAL_STORAGE)){
+                    //|| ActivityCompat.shouldShowRequestPermissionRationale(mActivity,Manifest.permission.READ_EXTERNAL_STORAGE)
+                    //|| ActivityCompat.shouldShowRequestPermissionRationale(mActivity,Manifest.permission.WRITE_EXTERNAL_STORAGE)
+                    ){
                 // If we should give explanation of requested permissions
 
                 // Show an alert dialog here with request explanation
@@ -1391,8 +1454,8 @@ public class MainActivity extends AppCompatActivity {
                                         Manifest.permission.INTERNET,
                                         Manifest.permission.ACCESS_WIFI_STATE,
                                         Manifest.permission.ACCESS_FINE_LOCATION,
-                                        Manifest.permission.READ_EXTERNAL_STORAGE,
-                                        Manifest.permission.WRITE_EXTERNAL_STORAGE,
+                                        //Manifest.permission.READ_EXTERNAL_STORAGE,
+                                        //Manifest.permission.WRITE_EXTERNAL_STORAGE,
                                 },
                                 MY_PERMISSIONS_REQUEST_CODE
                         );
@@ -1409,8 +1472,8 @@ public class MainActivity extends AppCompatActivity {
                                 Manifest.permission.INTERNET,
                                 Manifest.permission.ACCESS_WIFI_STATE,
                                 Manifest.permission.ACCESS_FINE_LOCATION,
-                                Manifest.permission.READ_EXTERNAL_STORAGE,
-                                Manifest.permission.WRITE_EXTERNAL_STORAGE,
+                                //Manifest.permission.READ_EXTERNAL_STORAGE,
+                                //Manifest.permission.WRITE_EXTERNAL_STORAGE,
                         },
                         MY_PERMISSIONS_REQUEST_CODE
                 );
@@ -1431,8 +1494,8 @@ public class MainActivity extends AppCompatActivity {
                         (grantResults[0]
                                 + grantResults[1]
                                 + grantResults[2]
-                                + grantResults[3]
-                                + grantResults[4]
+                                //+ grantResults[3]
+                                //+ grantResults[4]
                                 == PackageManager.PERMISSION_GRANTED
                         )
                 ) {

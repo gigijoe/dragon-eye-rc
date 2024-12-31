@@ -10,6 +10,7 @@ import android.os.Handler;
 import android.os.Looper;
 import android.os.Message;
 import android.view.View;
+import android.view.WindowManager;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.ListView;
@@ -27,7 +28,7 @@ import static com.gtek.dragon_eye_rc.TimerState.idleState;
 import static com.gtek.dragon_eye_rc.TimerState.speedCourseState;
 import static com.gtek.dragon_eye_rc.TimerState.thirtySecondState;
 
-public class TimerActivity extends AppCompatActivity {
+public class F3fTimerActivity extends AppCompatActivity {
     private Timer mTimer;
     private TimerTask mTimerTask = null;
     private static int serNoA = 0, serNoB = 0;
@@ -164,15 +165,7 @@ public class TimerActivity extends AppCompatActivity {
 
                     if(millis >= 200000) // Over 200 secs, do not play voice
                         return;
-/*
-                    float duration = (float)millis / 1000;
-                    mTextViewDuration.setText(String.format("%.2f", duration));
-                    //System.out.println("Result = " + String.format("%.2f", duration));
 
-                    mResults.add(0, String.format("%.2f", duration));
-                    //mListViewResults.deferNotifyDataSetChanged();
-                    mListViewResultsAdapter.notifyDataSetChanged();
-*/
                     int v0 = (int)(millis / 1000);
                     int v1 = (int) (millis % 1000);
                     mTextViewDuration.setText(String.format("%d", v0) + "." + String.format("%02d", (v1 / 10)));
@@ -183,14 +176,6 @@ public class TimerActivity extends AppCompatActivity {
                     Thread thread = new Thread(new Runnable() {
                         @Override
                         public void run() {
-                            /*
-                            try {
-                                Thread.sleep(10);
-                            } catch (InterruptedException e) {
-                                e.printStackTrace();
-                            }
-                            */
-                            //ArrayList<Integer> toneArray = new ArrayList<>();
                             ArrayList<String> toneArray = new ArrayList<>();
                             toneArray.add("r_e.raw");
 
@@ -329,6 +314,7 @@ public class TimerActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_timer);
+        getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
 
         mTextViewDuration = (TextView) findViewById(R.id.textViewDuration);
         mTextViewWind = (TextView) findViewById(R.id.textViewWind);
@@ -354,10 +340,6 @@ public class TimerActivity extends AppCompatActivity {
         mListViewResultsAdapter = new ArrayAdapter<String>(this, R.layout.result_content, mResults);
         mListViewResults.setAdapter(mListViewResultsAdapter);
 
-        //registerReceiver(broadcastReceiver, new IntentFilter("mcastMsg"));
-        //registerReceiver(broadcastReceiver, new IntentFilter("udpMsg"));
-        //registerReceiver(broadcastReceiver, new IntentFilter("usbMsg"));
-
         FloatingActionButton bs = findViewById(R.id.button_start_timer);
         bs.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -381,7 +363,6 @@ public class TimerActivity extends AppCompatActivity {
         mThirtySecondTimer.cancel();
         stopTimer();
         DragonEyeApplication.getInstance().stopTone();
-        //unregisterReceiver(broadcastReceiver);
         super.onDestroy();
     }
 
@@ -444,8 +425,6 @@ public class TimerActivity extends AppCompatActivity {
         @Override
         public void onTick(long millisUntilFinished) {
             onThirtySecondTick(millisUntilFinished);
-            //tv.setText("請等待：" + millisUntilFinished / 1000 + "秒...");
-            //mTextViewDuration.setText(Float.toString(duration));
         }
 
         @Override
@@ -478,7 +457,7 @@ public class TimerActivity extends AppCompatActivity {
             if(mRepeatTriggerTick.get() == 0) {
                 mRepeatTriggerTimer.cancel();
                 mRepeatTriggerTimer.start();
-                TimerActivity.this.runOnUiThread(new Runnable() {
+                F3fTimerActivity.this.runOnUiThread(new Runnable() {
                     @Override
                     public void run() {
                         onBaseA();
@@ -490,7 +469,7 @@ public class TimerActivity extends AppCompatActivity {
             if(mRepeatTriggerTick.get() == 0) {
                 mRepeatTriggerTimer.cancel();
                 mRepeatTriggerTimer.start();
-                TimerActivity.this.runOnUiThread(new Runnable() {
+                F3fTimerActivity.this.runOnUiThread(new Runnable() {
                     @Override
                     public void run() {
                         onBaseB();
@@ -504,24 +483,4 @@ public class TimerActivity extends AppCompatActivity {
     void onWindStatus(float speed, int dir) {
         mTextViewWind.setText(String.format("Wind %.2f / Dir %03d", speed, dir));
     }
-/*
-    private BroadcastReceiver broadcastReceiver = new BroadcastReceiver() {
-        @Override
-        public void onReceive(Context context, Intent intent) {
-            if(intent.getAction().equals("udpMsg")) {
-                if (intent.hasExtra("udpRcvMsg")) {
-                    onUdpRx(intent.getStringExtra("udpRcvMsg"));
-                }
-            } else if(intent.getAction().equals("mcastMsg")) {
-                if (intent.hasExtra("mcastRcvMsg")) {
-                    onMulticastRx(intent.getStringExtra("mcastRcvMsg"));
-                }
-            } else if(intent.getAction().equals("usbMsg")) {
-                if (intent.hasExtra("usbRcvMsg")) {
-                    onUsbRx(intent.getStringExtra("usbRcvMsg"));
-                }
-            }
-        }
-    };
- */
 }

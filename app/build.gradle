@@ -3,15 +3,15 @@ plugins {
 }
 
 android {
-    compileSdkVersion 31
+    compileSdkVersion 33
     buildToolsVersion "30.0.3"
 
     defaultConfig {
         applicationId "com.gtek.dragon_eye_rc"
-        minSdkVersion 23
-        targetSdkVersion 30
-        versionCode 1
-        versionName "1.0"
+        minSdk 29
+        targetSdkVersion 33
+        versionCode 3
+        versionName "0.1.9a"
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
 
@@ -74,12 +74,12 @@ android {
     flavorDimensions "extractorLibrary"
 
     productFlavors {
-        ndkExtractor {
+        dev {
             dimension "extractorLibrary"
             // Oboe has a minimum API of 16, but AMediaExtractor (used to extract the MP3 assets)
             // is only available from API 21.
             // For further backward compatibility consider using FFmpeg (see below)
-            minSdkVersion 21
+            minSdkVersion 29
             externalNativeBuild {
                 cmake {
                     arguments "-DUSE_FFMPEG=0"

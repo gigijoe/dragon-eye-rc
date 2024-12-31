@@ -1,18 +1,18 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
     package="com.gtek.dragon_eye_rc">
 
     <uses-permission android:name="android.permission.WAKE_LOCK" />
     <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
-    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
-    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32" tools:replace="android:maxSdkVersion"/>
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" android:maxSdkVersion="32" tools:replace="android:maxSdkVersion"/>
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.CHANGE_WIFI_MULTICAST_STATE" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
-    <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION" />
     <uses-permission android:name="android.permission.CHANGE_WIFI_STATE" />
     <uses-permission android:name="android.permission.CHANGE_NETWORK_STATE" />
     <uses-permission android:name="android.hardware.usb.host" />
@@ -28,7 +28,8 @@
         android:theme="@style/Theme.DragonEye">
         <activity
             android:name=".MiscSettingsActivity"
-            android:label="Misc Settings">
+            android:label="Misc Settings"
+            android:exported="true">
             <intent-filter>
                 <action android:name="com.gtek.dragon_eye_rc.MiscSettingsActivity" />
                 <category android:name="android.intent.category.DEFAULT" />
@@ -36,7 +37,8 @@
         </activity>
         <activity
             android:name=".FirmwareActivity"
-            android:label="Firmware Upgrade">
+            android:label="Firmware Upgrade"
+            android:exported="true">
             <intent-filter>
                 <action android:name="com.gtek.dragon_eye_rc.FirmwareActivity" />
                 <category android:name="android.intent.category.DEFAULT" />
@@ -58,10 +60,17 @@
             android:label="@string/system_settings"
             android:screenOrientation="portrait" />
         <activity
-            android:name=".TimerActivity"
+            android:name=".F3fTimerActivity"
             android:label="@string/f3f_timer"
-            android:screenOrientation="portrait" />
-        <activity android:name=".MainActivity">
+            android:screenOrientation="portrait"
+            android:exported="true"/>
+        <activity
+            android:name=".F3bTimerActivity"
+            android:label="@string/f3b_timer"
+            android:screenOrientation="portrait"
+            android:exported="true"/>
+        <activity android:name=".MainActivity"
+            android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />

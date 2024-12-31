@@ -9,11 +9,12 @@
     <string name="delete">Delete</string>
     <string name="rtsp_video">RTSP Video</string>
     <string name="f3f_timer">F3F Timer</string>
+    <string name="f3b_timer">F3B Timer</string>
     <string name="clear_base">Clear Base</string>
     <string name="about">About</string>
     <string name="title_activity_compass">Compass Settings</string>
     <string name="wifi_disconnected">"WIFI Disconnected !!!"</string>
     <string name="wind_speed_and_direction">"Wind speed and direction"</string>
 
-    <string name="version">v0.2.0</string>
+    <string name="version">v0.1.9a</string>
 </resources>

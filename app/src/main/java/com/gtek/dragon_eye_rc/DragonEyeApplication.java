@@ -3,18 +3,30 @@ package com.gtek.dragon_eye_rc;
 import android.app.Activity;
 import android.app.Application;
 import android.content.Context;
+import android.content.Intent;
 import android.content.res.AssetManager;
 import android.media.AudioManager;
 import android.net.ConnectivityManager;
+import android.net.LinkAddress;
+import android.net.LinkProperties;
 import android.net.Network;
 import android.net.NetworkCapabilities;
 import android.net.NetworkRequest;
+import android.net.wifi.WifiInfo;
+import android.net.wifi.WifiManager;
 import android.os.Build;
 import android.os.PowerManager;
 import android.text.TextUtils;
 import android.util.Log;
 
+import androidx.annotation.NonNull;
+
 import java.lang.reflect.Field;
+import java.math.BigInteger;
+import java.net.Inet4Address;
+import java.net.InetAddress;
+import java.net.UnknownHostException;
+import java.nio.ByteOrder;
 import java.util.ArrayList;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -26,6 +38,8 @@ public class DragonEyeApplication extends Application {
         return mInstance;
     }
 
+    private int mIpAddress = 0;
+    private int mNetworkId = -1;
     public UDPClient mUdpClient = null;
     public int mSelectedBaseIndex = -1;
 
@@ -243,29 +257,26 @@ public class DragonEyeApplication extends Application {
         //b.startResponseTimer();
     }
 
+    public int WifiIpAddress() {
+        return mIpAddress;
+    }
+
+    public void WifiIpAddress(int addr) {
+        mIpAddress = addr;
+    }
+
+    public int WifiNetworkId() {
+        return mNetworkId;
+    }
+
+    public void WifiNetworkId(int id) {
+        mNetworkId = id;
+    }
+
     @Override
     public void onCreate() {
         super.onCreate();
-
-        NetworkRequest.Builder requestBuilder = new NetworkRequest.Builder();
-        requestBuilder.addTransportType(NetworkCapabilities.TRANSPORT_WIFI);
-        ConnectivityManager cm = (ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE);
-        cm.requestNetwork(requestBuilder.build(), new ConnectivityManager.NetworkCallback() {
-            @Override
-            public void onAvailable(Network network) {
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                    cm.bindProcessToNetwork(network);
-                }
-            }
-
-            @Override
-            public void onUnavailable() {
-                super.onUnavailable();
-            }
-        });
-
         mInstance = this;
-
         mUdpClient = new UDPClient(getApplicationContext());
 
         setDefaultStreamValues(this);
